@@ -1,13 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Sinhala:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;850&family=Noto+Sans+Sinhala:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Light Theme */
-  --bg-gradient: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
-  --panel-bg: rgba(255, 255, 255, 0.85);
-  --panel-border: rgba(226, 232, 240, 0.8);
-  --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+  /* Ultra-clean, Modern Light Theme */
+  --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%);
+  --panel-bg: rgba(255, 255, 255, 0.95);
+  --panel-border: rgba(226, 232, 240, 0.9);
+  --card-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
   --text-main: #0f172a;
-  --text-muted: #64748b;
+  --text-muted: #475569;
   --text-dim: #94a3b8;
   --border-color: #e2e8f0;
   --input-bg: #ffffff;
@@ -32,33 +32,33 @@
 
 .dark-theme,
 html.dark {
-  /* Dark Theme */
-  --bg-gradient: radial-gradient(circle at 15% 15%, #182234 0%, #0b101b 100%);
-  --panel-bg: rgba(26, 34, 52, 0.75);
-  --panel-border: rgba(255, 255, 255, 0.08);
-  --card-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --input-bg: rgba(15, 23, 42, 0.85);
+  /* Luminous, Vibrant Modern Dark Theme (Not pitch black, rich & elevated) */
+  --bg-gradient: radial-gradient(circle at 15% 10%, #1e293b 0%, #111827 50%, #0d131f 100%);
+  --panel-bg: rgba(30, 41, 59, 0.85);
+  --panel-border: rgba(255, 255, 255, 0.13);
+  --card-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.45), 0 4px 16px -2px rgba(0, 0, 0, 0.25);
+  --text-main: #ffffff;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+  --border-color: rgba(255, 255, 255, 0.12);
+  --input-bg: rgba(15, 23, 42, 0.78);
 
   --accent-color: #10b981;
   --accent-hover: #34d399;
-  --accent-light: rgba(16, 185, 129, 0.18);
+  --accent-light: rgba(16, 185, 129, 0.22);
 
   --primary-color: #818cf8;
   --primary-hover: #6366f1;
-  --primary-light: rgba(129, 140, 248, 0.18);
+  --primary-light: rgba(129, 140, 248, 0.22);
 
   --danger-color: #f87171;
-  --danger-light: rgba(248, 113, 113, 0.18);
+  --danger-light: rgba(248, 113, 113, 0.22);
 
   --warning-color: #fbbf24;
-  --warning-light: rgba(251, 191, 36, 0.18);
+  --warning-light: rgba(251, 191, 36, 0.22);
 
   --success-color: #34d399;
-  --success-light: rgba(52, 211, 153, 0.18);
+  --success-light: rgba(52, 211, 153, 0.22);
 }
 
 * {
@@ -76,8 +76,4 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-button, input, select, textarea {
-  font-family: inherit;
 }
