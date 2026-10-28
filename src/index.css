@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Sinhala:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Light Theme */
+  --bg-gradient: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+  --panel-bg: rgba(255, 255, 255, 0.85);
+  --panel-border: rgba(226, 232, 240, 0.8);
+  --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --border-color: #e2e8f0;
+  --input-bg: #ffffff;
+  
+  --accent-color: #10b981;
+  --accent-hover: #059669;
+  --accent-light: rgba(16, 185, 129, 0.12);
+  
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.12);
+
+  --danger-color: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.12);
+  
+  --warning-color: #f59e0b;
+  --warning-light: rgba(245, 158, 11, 0.12);
+
+  --success-color: #10b981;
+  --success-light: rgba(16, 185, 129, 0.12);
+}
+
+.dark-theme,
+html.dark {
+  /* Dark Theme */
+  --bg-gradient: radial-gradient(circle at 15% 15%, #182234 0%, #0b101b 100%);
+  --panel-bg: rgba(26, 34, 52, 0.75);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --card-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --input-bg: rgba(15, 23, 42, 0.85);
+
+  --accent-color: #10b981;
+  --accent-hover: #34d399;
+  --accent-light: rgba(16, 185, 129, 0.18);
+
+  --primary-color: #818cf8;
+  --primary-hover: #6366f1;
+  --primary-light: rgba(129, 140, 248, 0.18);
+
+  --danger-color: #f87171;
+  --danger-light: rgba(248, 113, 113, 0.18);
+
+  --warning-color: #fbbf24;
+  --warning-light: rgba(251, 191, 36, 0.18);
+
+  --success-color: #34d399;
+  --success-light: rgba(52, 211, 153, 0.18);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Sinhala', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
