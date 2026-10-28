@@ -8,6 +8,13 @@ import {
 import CategoryIcon from './components/CategoryIcon';
 import Charts from './components/Charts';
 import {
+  fetchNetworkInfo,
+  loginApi,
+  registerApi,
+  fetchUserDataApi,
+  saveUserDataApi,
+} from './apiService';
+import {
   Plus,
   Trash2,
   Calendar,
@@ -133,12 +140,11 @@ export default function App() {
     }, 3500);
   };
 
-  // Fetch server network info
+  // Fetch server network info (if local server is running)
   useEffect(() => {
-    fetch('/api/network')
-      .then(res => res.json())
-      .then(data => { if (data.url) setNetworkInfo(data); })
-      .catch(() => {});
+    fetchNetworkInfo().then(data => {
+      if (data && data.url) setNetworkInfo(data);
+    });
   }, []);
 
   // Save active user in localStorage
@@ -157,14 +163,15 @@ export default function App() {
     const loadUserData = async () => {
       try {
         setSyncStatus('syncing');
-        const res = await fetch(`/api/user-data?id=${currentUser.id}`);
-        if (res.ok) {
-          const data = await res.json();
+        const data = await fetchUserDataApi(currentUser.id);
+        if (data) {
           setTransactions(data.transactions || []);
           setSettings(data.settings || INITIAL_SETTINGS);
           setLoans(data.loans || []);
           lastUpdatedRef.current = data.lastUpdated || Date.now();
           setSyncStatus('synced');
+        } else {
+          setSyncStatus('offline');
         }
       } catch {
         setSyncStatus('offline');
@@ -173,30 +180,27 @@ export default function App() {
 
     loadUserData();
 
-    // 2-Way Sync polling for current user
+    // 2-Way Sync polling from Firebase Cloud Database
     const interval = setInterval(async () => {
       if (isSavingRef.current || !currentUser) return;
       try {
-        const res = await fetch(`/api/user-data?id=${currentUser.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          if ((data.lastUpdated || 0) > lastUpdatedRef.current) {
-            lastUpdatedRef.current = data.lastUpdated || Date.now();
-            setTransactions(data.transactions || []);
-            if (data.settings) setSettings(data.settings);
-            if (data.loans) setLoans(data.loans);
-            setSyncStatus('synced');
-          }
+        const data = await fetchUserDataApi(currentUser.id);
+        if (data && (data.lastUpdated || 0) > lastUpdatedRef.current) {
+          lastUpdatedRef.current = data.lastUpdated || Date.now();
+          setTransactions(data.transactions || []);
+          if (data.settings) setSettings(data.settings);
+          if (data.loans) setLoans(data.loans);
+          setSyncStatus('synced');
         }
       } catch {
         setSyncStatus('offline');
       }
-    }, 2500);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [currentUser?.id]);
 
-  // Save current user data to server
+  // Save current user data to Firebase Cloud Database
   const saveUserData = async (newTx, newStg, newLoans) => {
     if (!currentUser) return;
     try {
@@ -215,13 +219,8 @@ export default function App() {
       };
       lastUpdatedRef.current = payload.lastUpdated;
 
-      const res = await fetch('/api/user-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) setSyncStatus('synced');
+      const success = await saveUserDataApi(payload);
+      if (success) setSyncStatus('synced');
       else setSyncStatus('offline');
     } catch {
       setSyncStatus('offline');
@@ -237,16 +236,7 @@ export default function App() {
     setAuthLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: authUsername.trim(),
-          password: authPassword.trim(),
-        }),
-      });
-
-      const data = await res.json();
+      const data = await loginApi(authUsername.trim(), authPassword.trim());
       if (data.success) {
         setCurrentUser(data.user);
         setTransactions(data.data.transactions || []);
@@ -283,19 +273,14 @@ export default function App() {
     setAuthLoading(true);
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: authUsername.trim(),
-          password: authPassword.trim(),
-          name: regName.trim(),
-          avatar: regAvatar,
-          initialBalance: parseFloat(regBalance) || 0,
-        }),
+      const data = await registerApi({
+        username: authUsername.trim(),
+        password: authPassword.trim(),
+        name: regName.trim(),
+        avatar: regAvatar,
+        initialBalance: parseFloat(regBalance) || 0,
       });
 
-      const data = await res.json();
       if (data.success) {
         setCurrentUser(data.user);
         setTransactions(data.data.transactions || []);
