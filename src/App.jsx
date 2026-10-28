@@ -93,8 +93,9 @@ export default function App() {
   const [entryType, setEntryType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const [category, setCategory] = useState('food');
+  const [category, setCategory] = useState('lunch');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
 
   // Loan & Debt Modal state (Tracking both Lent & Borrowed money)
   const [loanModalOpen, setLoanModalOpen] = useState(false);
@@ -487,7 +488,7 @@ export default function App() {
           id: 'tx-loan-' + Date.now(),
           type: 'expense',
           amount: amt,
-          category: 'personal',
+          category: 'lent',
           date: newLoan.date,
           note: `Lent to ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
           loanId: newLoan.id,
@@ -500,7 +501,7 @@ export default function App() {
           id: 'tx-borrow-' + Date.now(),
           type: 'income',
           amount: amt,
-          category: 'other',
+          category: 'borrowed',
           date: newLoan.date,
           note: `Borrowed from ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
           loanId: newLoan.id,
@@ -542,7 +543,7 @@ export default function App() {
         id: 'tx-repay-' + Date.now(),
         type: 'income',
         amount: target.amount,
-        category: 'other',
+        category: 'lent',
         date: todayStr,
         note: `Repaid by ${target.friendName}${target.note ? ` (Settled: ${target.note})` : ''}`,
         loanId: target.id,
@@ -556,7 +557,7 @@ export default function App() {
         id: 'tx-payback-' + Date.now(),
         type: 'expense',
         amount: target.amount,
-        category: 'personal',
+        category: 'borrowed',
         date: todayStr,
         note: `Paid back loan to ${target.friendName}${target.note ? ` (${target.note})` : ''}`,
         loanId: target.id,
@@ -630,13 +631,34 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  // Resolve effective category (handles backward-compatibility for meal & debt notes)
+  const getEffectiveCategory = (t) => {
+    if (t.category === 'breakfast' || t.category === 'lunch' || t.category === 'dinner') return t.category;
+    if (t.category === 'lent' || (t.loanId?.startsWith('loan-') && t.type === 'expense')) return 'lent';
+    if (t.category === 'borrowed' || (t.loanId?.startsWith('loan-') && t.type === 'income')) return 'borrowed';
+    const noteLower = (t.note || '').toLowerCase();
+    if (noteLower.includes('breakfast') || noteLower.includes('උදෑසන')) return 'breakfast';
+    if (noteLower.includes('lunch') || noteLower.includes('දවල්')) return 'lunch';
+    if (noteLower.includes('dinner') || noteLower.includes('රාත්‍රී') || noteLower.includes('රෑ කෑම')) return 'dinner';
+    if (noteLower.includes('lent to') || noteLower.includes('ණයට දුන්')) return 'lent';
+    if (noteLower.includes('borrowed from') || noteLower.includes('ණයට ගත්')) return 'borrowed';
+    return t.category || 'other';
+  };
+
   // Filtered transactions for wallet tab
   const filtered = transactions.filter(t => {
+    const effCat = getEffectiveCategory(t);
+    if (selectedCategoryFilter !== 'all') {
+      if (selectedCategoryFilter === 'lent' && effCat !== 'lent') return false;
+      if (selectedCategoryFilter === 'borrowed' && effCat !== 'borrowed') return false;
+      if (selectedCategoryFilter !== 'lent' && selectedCategoryFilter !== 'borrowed' && effCat !== selectedCategoryFilter) return false;
+    }
+
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     const noteMatch = (t.note || '').toLowerCase().includes(q);
     const amtMatch = String(t.amount).includes(q);
-    const cat = CATEGORIES[t.category];
+    const cat = CATEGORIES[effCat] || CATEGORIES.other;
     const catMatch = (cat?.nameEn || '').toLowerCase().includes(q) || (cat?.nameSi || '').includes(q);
     return noteMatch || amtMatch || catMatch;
   });
@@ -1297,7 +1319,10 @@ export default function App() {
             {/* 3. Clean Transaction History */}
             <section className="transactions-simple-card">
               <div className="list-header-row">
-                <h3>{isSi ? 'ගනුදෙනු ලැයිස්තුව (History)' : 'Recent Transactions'}</h3>
+                <div className="tx-header-title-group">
+                  <h3>{isSi ? 'ගනුදෙනු ලැයිස්තුව (History)' : 'Recent Transactions'}</h3>
+                  <span className="tx-count-badge">{filtered.length} {isSi ? 'ගනුදෙනු' : 'items'}</span>
+                </div>
                 
                 <div className="search-box-minimal">
                   <Search size={14} className="search-icon-min" />
@@ -1311,29 +1336,77 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Category Filter Pills (Breakfast, Lunch, Dinner, Lent, Borrowed, etc.) */}
+              <div className="tx-category-filter-bar">
+                {[
+                  { id: 'all', badge: '⚡', nameEn: 'All', nameSi: 'සියල්ල' },
+                  { id: 'breakfast', badge: '🍳', nameEn: 'Breakfast', nameSi: 'උදෑසන' },
+                  { id: 'lunch', badge: '🍛', nameEn: 'Lunch', nameSi: 'දවල්' },
+                  { id: 'dinner', badge: '🌙', nameEn: 'Dinner', nameSi: 'රාත්‍රී' },
+                  { id: 'lent', badge: '🤝', nameEn: 'Lent (දුන්නා)', nameSi: 'ණයට දුන්' },
+                  { id: 'borrowed', badge: '📥', nameEn: 'Borrowed (ගත්තා)', nameSi: 'ණයට ගත්' },
+                  { id: 'transport', badge: '🚌', nameEn: 'Transport', nameSi: 'ප්‍රවාහන' },
+                  { id: 'reload', badge: '📱', nameEn: 'Reload', nameSi: 'රිලෝඩ්' },
+                  { id: 'food', badge: '🍔', nameEn: 'Snacks', nameSi: 'ස්නැක්ස්' },
+                  { id: 'academic', badge: '📚', nameEn: 'Studies', nameSi: 'පොත්පත්' },
+                  { id: 'boarding', badge: '🏠', nameEn: 'Boarding', nameSi: 'බෝඩිං' },
+                  { id: 'entertainment', badge: '☕', nameEn: 'Tea/Outing', nameSi: 'තේ බීම' },
+                  { id: 'other', badge: '💡', nameEn: 'Other', nameSi: 'වෙනත්' },
+                ].map(opt => {
+                  const isActive = selectedCategoryFilter === opt.id;
+                  const count = opt.id === 'all'
+                    ? transactions.length
+                    : transactions.filter(t => getEffectiveCategory(t) === opt.id).length;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setSelectedCategoryFilter(opt.id)}
+                      className={`tx-cat-filter-chip ${isActive ? 'active' : ''}`}
+                    >
+                      <span className="filter-chip-emoji">{opt.badge}</span>
+                      <span className="filter-chip-name">{isSi ? opt.nameSi : opt.nameEn}</span>
+                      {count > 0 && <span className="filter-chip-count">{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
               {filtered.length === 0 ? (
                 <div className="empty-simple">
-                  <p>{isSi ? 'තවම ගනුදෙනු සටහන් කර නැත' : 'No transactions recorded yet'}</p>
+                  <p>{isSi ? 'මෙම කාණ්ඩයේ ගනුදෙනු කිසිවක් නැත' : 'No transactions found in this category'}</p>
                 </div>
               ) : (
                 <div className="simple-tx-list">
                   {filtered.map(t => {
                     const isIncome = t.type === 'income';
-                    const cat = CATEGORIES[t.category] || CATEGORIES.other;
+                    const effCat = getEffectiveCategory(t);
+                    const cat = CATEGORIES[effCat] || CATEGORIES.other;
                     return (
                       <div key={t.id} className="simple-tx-item">
                         <div className="tx-left-col">
                           <div
-                            className={`tx-cat-circle ${isIncome ? 'circle-income' : ''}`}
+                            className={`tx-cat-circle ${isIncome && effCat !== 'borrowed' ? 'circle-income' : ''}`}
                             style={{
-                              backgroundColor: isIncome ? 'rgba(16, 185, 129, 0.15)' : cat.bgColor,
-                              color: isIncome ? '#10b981' : cat.color,
+                              backgroundColor: isIncome && effCat !== 'borrowed' ? 'rgba(16, 185, 129, 0.15)' : cat.bgColor,
+                              color: isIncome && effCat !== 'borrowed' ? '#10b981' : cat.color,
                             }}
                           >
-                            {isIncome ? <ArrowUpRight size={16} /> : <CategoryIcon categoryId={t.category} size={15} />}
+                            {isIncome && effCat !== 'borrowed' ? <ArrowUpRight size={16} /> : <CategoryIcon categoryId={effCat} size={15} />}
                           </div>
                           <div>
-                            <div className="tx-item-title">{t.note}</div>
+                            <div className="tx-item-title-row">
+                              <span className="tx-item-title">{t.note}</span>
+                              <span
+                                className="tx-category-tag"
+                                style={{
+                                  backgroundColor: cat.bgColor,
+                                  color: cat.color,
+                                }}
+                              >
+                                {cat.badge} {isSi ? cat.nameSi : cat.nameEn}
+                              </span>
+                            </div>
                             <div className="tx-item-date">{t.date}</div>
                           </div>
                         </div>

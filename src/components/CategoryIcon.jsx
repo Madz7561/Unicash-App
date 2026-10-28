@@ -11,12 +11,27 @@ import {
   Wallet,
   TrendingDown,
   TrendingUp,
+  EggFried,
+  Moon,
+  HandCoins,
+  Receipt,
+  CookingPot,
 } from 'lucide-react';
 
 export default function CategoryIcon({ categoryId, size = 18, className = '' }) {
   switch (categoryId) {
-    case 'food':
+    case 'breakfast':
+      return <EggFried size={size} className={className} />;
+    case 'lunch':
       return <Utensils size={size} className={className} />;
+    case 'dinner':
+      return <Moon size={size} className={className} />;
+    case 'lent':
+      return <HandCoins size={size} className={className} />;
+    case 'borrowed':
+      return <Receipt size={size} className={className} />;
+    case 'food':
+      return <CookingPot size={size} className={className} />;
     case 'boarding':
       return <Home size={size} className={className} />;
     case 'transport':

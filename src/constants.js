@@ -1,11 +1,57 @@
 export const CATEGORIES = {
-  food: {
-    id: 'food',
-    nameEn: 'Food & Meals',
-    nameSi: 'කෑම බීම / කැන්ටිම',
+  breakfast: {
+    id: 'breakfast',
+    nameEn: 'Breakfast',
+    nameSi: 'උදෑසන ආහාරය',
+    color: '#f59e0b',
+    bgColor: 'rgba(245, 158, 11, 0.15)',
+    icon: 'EggFried',
+    badge: '🍳',
+  },
+  lunch: {
+    id: 'lunch',
+    nameEn: 'Lunch',
+    nameSi: 'දවල් ආහාරය',
     color: '#f97316',
     bgColor: 'rgba(249, 115, 22, 0.15)',
     icon: 'Utensils',
+    badge: '🍛',
+  },
+  dinner: {
+    id: 'dinner',
+    nameEn: 'Dinner',
+    nameSi: 'රාත්‍රී ආහාරය',
+    color: '#6366f1',
+    bgColor: 'rgba(99, 102, 241, 0.15)',
+    icon: 'Moon',
+    badge: '🌙',
+  },
+  lent: {
+    id: 'lent',
+    nameEn: 'Lent to Friend',
+    nameSi: 'යාලුවෙකුට ණයට දුන්නා',
+    color: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.15)',
+    icon: 'HandCoins',
+    badge: '🤝',
+  },
+  borrowed: {
+    id: 'borrowed',
+    nameEn: 'Borrowed from Friend',
+    nameSi: 'යාලුවෙකුගෙන් ණයට ගත්තා',
+    color: '#10b981',
+    bgColor: 'rgba(16, 185, 129, 0.15)',
+    icon: 'Receipt',
+    badge: '📥',
+  },
+  food: {
+    id: 'food',
+    nameEn: 'Food & Snacks',
+    nameSi: 'කෑම බීම / ස්නැක්ස්',
+    color: '#ea580c',
+    bgColor: 'rgba(234, 88, 12, 0.15)',
+    icon: 'CookingPot',
+    badge: '🍔',
   },
   transport: {
     id: 'transport',
@@ -14,22 +60,25 @@ export const CATEGORIES = {
     color: '#0ea5e9',
     bgColor: 'rgba(14, 165, 233, 0.15)',
     icon: 'Bus',
+    badge: '🚌',
   },
   academic: {
     id: 'academic',
     nameEn: 'Studies & Printouts',
     nameSi: 'පොත්පත් / ප්‍රින්ට්අවුට්',
-    color: '#10b981',
-    bgColor: 'rgba(16, 185, 129, 0.15)',
+    color: '#059669',
+    bgColor: 'rgba(5, 150, 105, 0.15)',
     icon: 'BookOpen',
+    badge: '📚',
   },
   reload: {
     id: 'reload',
-    nameEn: 'Mobile & Internet',
+    nameEn: 'Mobile & Reload',
     nameSi: 'රිලෝඩ් / ඩේටා පැකේජ්',
     color: '#ec4899',
     bgColor: 'rgba(236, 72, 153, 0.15)',
     icon: 'Smartphone',
+    badge: '📱',
   },
   boarding: {
     id: 'boarding',
@@ -38,6 +87,16 @@ export const CATEGORIES = {
     color: '#8b5cf6',
     bgColor: 'rgba(139, 92, 246, 0.15)',
     icon: 'Home',
+    badge: '🏠',
+  },
+  entertainment: {
+    id: 'entertainment',
+    nameEn: 'Tea & Outing',
+    nameSi: 'යාලුවොත් එක්ක තේ බීම',
+    color: '#06b6d4',
+    bgColor: 'rgba(6, 182, 212, 0.15)',
+    icon: 'Coffee',
+    badge: '☕',
   },
   personal: {
     id: 'personal',
@@ -46,14 +105,7 @@ export const CATEGORIES = {
     color: '#eab308',
     bgColor: 'rgba(234, 179, 8, 0.15)',
     icon: 'HeartPulse',
-  },
-  entertainment: {
-    id: 'entertainment',
-    nameEn: 'Outing & Tea',
-    nameSi: 'යාලුවොත් එක්ක තේ බීම',
-    color: '#06b6d4',
-    bgColor: 'rgba(6, 182, 212, 0.15)',
-    icon: 'Coffee',
+    badge: '✨',
   },
   other: {
     id: 'other',
@@ -62,16 +114,18 @@ export const CATEGORIES = {
     color: '#64748b',
     bgColor: 'rgba(100, 116, 139, 0.15)',
     icon: 'MoreHorizontal',
+    badge: '💡',
   },
 };
 
 export const QUICK_ADD_EXPENSES = [
-  { labelEn: 'Canteen Lunch', labelSi: 'කැන්ටිමේ දවල් කෑම', amount: 200, category: 'food' },
-  { labelEn: 'Tea & Bun', labelSi: 'තේ සහ බනිස්', amount: 90, category: 'food' },
-  { labelEn: 'Dinner', labelSi: 'රාත්‍රී ආහාරය', amount: 300, category: 'food' },
+  { labelEn: 'Breakfast', labelSi: 'උදෑසන ආහාරය', amount: 150, category: 'breakfast' },
+  { labelEn: 'Lunch', labelSi: 'දවල් ආහාරය', amount: 220, category: 'lunch' },
+  { labelEn: 'Dinner', labelSi: 'රාත්‍රී ආහාරය', amount: 280, category: 'dinner' },
+  { labelEn: 'Tea & Bun', labelSi: 'තේ සහ බනිස්', amount: 90, category: 'entertainment' },
   { labelEn: 'Bus / Train', labelSi: 'බස් / කෝච්චි', amount: 70, category: 'transport' },
-  { labelEn: 'Printout', labelSi: 'ප්‍රින්ට්අවුට් / ෆොටෝකොපි', amount: 50, category: 'academic' },
   { labelEn: 'Reload', labelSi: 'ෆෝන් රිලෝඩ්', amount: 150, category: 'reload' },
+  { labelEn: 'Printout', labelSi: 'ප්‍රින්ට්අවුට්', amount: 50, category: 'academic' },
 ];
 
 export const QUICK_ADD_INCOME = [
@@ -83,7 +137,7 @@ export const QUICK_ADD_INCOME = [
 
 export const INITIAL_SETTINGS = {
   currency: 'Rs.',
-  language: 'en', // 'en' default as requested
+  language: 'en',
   darkMode: true,
 };
 
@@ -100,7 +154,7 @@ export const INITIAL_TRANSACTIONS = [
     id: 't-2',
     type: 'expense',
     amount: 250,
-    category: 'food',
+    category: 'lunch',
     note: 'Canteen Lunch',
     date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString().split('T')[0],
   },
@@ -115,9 +169,9 @@ export const INITIAL_TRANSACTIONS = [
   {
     id: 't-4',
     type: 'expense',
-    amount: 200,
-    category: 'food',
-    note: 'Canteen Lunch & Tea',
+    amount: 280,
+    category: 'dinner',
+    note: 'Dinner & Tea',
     date: new Date().toISOString().split('T')[0],
   },
 ];
