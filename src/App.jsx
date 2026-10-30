@@ -2272,201 +2272,168 @@ export default function App() {
       {/* ================= MODAL: RECORD LENT OR BORROWED MONEY ================= */}
       {loanModalOpen && (
         <div className="mini-modal-overlay" onClick={() => setLoanModalOpen(false)}>
-          <div className="mini-modal-card loan-record-modal" onClick={e => e.stopPropagation()}>
+          <div className="mini-modal-card loan-record-modal compact-debt-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-title-row">
               <div className="title-with-icon">
-                <Users size={22} className="text-accent" />
+                <Users size={20} className="text-accent" />
                 <h4>
                   {loanType === 'lent'
-                    ? (isSi ? 'යාලුවෙකු වෙනුවෙන් ගෙවීම / ණයක් දීම' : 'Record Money Lent / Paid for Friend')
-                    : (isSi ? 'සල්ලි අමතක වී යාලුවා ගෙවීම / ණයක් ගැනීම' : 'Record Money Borrowed / Friend Paid for You')}
+                    ? (isSi ? 'යාලුවාට ගෙවීම / ණය දීම' : 'Record Lent / Paid for Friend')
+                    : (isSi ? 'යාලුවා මට ගෙවීම / ණය ගැනීම' : 'Record Borrowed / Friend Paid')}
                 </h4>
               </div>
               <button onClick={() => setLoanModalOpen(false)} className="btn-modal-close">✕</button>
             </div>
 
-            {/* Mode Selector Cards (Crystal Clear Choice to prevent confusion) */}
-            <div className="loan-mode-cards-grid">
-              <div
-                className={`loan-mode-big-card ${loanType === 'lent' ? 'active-mode-lent' : ''}`}
+            {/* Compact Segmented Mode Selector */}
+            <div className="compact-debt-toggle">
+              <button
+                type="button"
+                className={`compact-debt-btn ${loanType === 'lent' ? 'active-lent' : ''}`}
                 onClick={() => {
                   setLoanType('lent');
                   if (loanPaymentSource === 'direct_bill') setLoanPaymentSource('cash');
                 }}
               >
-                <div className="mode-card-icon-title">
-                  <ArrowUpRight size={18} className="mode-icon amber" />
-                  <strong>{isSi ? 'මම යාලුවාට ගෙව්වා / දුන්නා' : 'I Paid for / Lent Friend'}</strong>
-                </div>
-                <p className="mode-card-desc">
-                  {isSi
-                    ? 'ඔබේ අතින්/බැංකුවෙන් යාලුවාට ගෙව්වා • යාලුවා ඔබට මුදල් දිය යුතුයි'
-                    : 'You paid or gave money • Friend owes you'}
-                </p>
-              </div>
-
-              <div
-                className={`loan-mode-big-card ${loanType === 'borrowed' ? 'active-mode-borrowed' : ''}`}
+                <ArrowUpRight size={15} />
+                <span>{isSi ? 'මම යාලුවාට ගෙව්වා' : 'I Paid for Friend (Lent)'}</span>
+              </button>
+              <button
+                type="button"
+                className={`compact-debt-btn ${loanType === 'borrowed' ? 'active-borrowed' : ''}`}
                 onClick={() => {
                   setLoanType('borrowed');
                   setLoanPaymentSource('direct_bill');
                 }}
               >
-                <div className="mode-card-icon-title">
-                  <ArrowDownLeft size={18} className="mode-icon purple" />
-                  <strong>{isSi ? 'යාලුවා මට ගෙව්වා / ගත්තා' : 'Friend Paid / Borrowed'}</strong>
-                </div>
-                <p className="mode-card-desc">
-                  {isSi
-                    ? 'සල්ලි අමතක වී යාලුවා ඔබට ගෙව්වා හෝ දුන්නා • ඔබ යාලුවාට දිය යුතුයි'
-                    : 'Friend paid for you or gave cash • You owe friend'}
-                </p>
-              </div>
+                <ArrowDownLeft size={15} />
+                <span>{isSi ? 'යාලුවා මට ගෙව්වා' : 'Friend Paid Me (I Owe)'}</span>
+              </button>
             </div>
 
-            {/* Quick Situation Presets Bar */}
-            <div className="loan-presets-section">
-              <span className="presets-label">
-                <Sparkles size={13} className="text-accent inline-icon" />
-                {isSi ? 'ක්ෂණික තේරීම් (Quick Presets):' : 'Quick Situations:'}
-              </span>
-              <div className="loan-presets-bar">
-                {loanType === 'lent' ? (
-                  <>
-                    <button
-                      type="button"
-                      className="loan-preset-chip"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'කැන්ටිමෙන් කෑම අරන් දුන්නා' : 'Canteen lunch for friend');
-                        setLoanPaymentSource('cash');
-                      }}
-                    >
-                      🍛 {isSi ? 'කැන්ටිමෙන් කෑම' : 'Canteen Lunch'}
-                    </button>
-                    <button
-                      type="button"
-                      className="loan-preset-chip"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'ප්‍රින්ටවුට් / කොපි ගත්තා' : 'Printout / Photocopy');
-                        setLoanPaymentSource('cash');
-                      }}
-                    >
-                      📄 {isSi ? 'ප්‍රින්ට් / කොපි' : 'Print / Copies'}
-                    </button>
-                    <button
-                      type="button"
-                      className="loan-preset-chip"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'අතට දුන් මුදල' : 'Cash lent');
-                        setLoanPaymentSource('cash');
-                      }}
-                    >
-                      💵 {isSi ? 'අතට දුන් මුදල' : 'Cash Lent'}
-                    </button>
-                    <button
-                      type="button"
-                      className="loan-preset-chip"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'බස් / ප්‍රවාහන ගාස්තු' : 'Bus fare');
-                        setLoanPaymentSource('cash');
-                      }}
-                    >
-                      🚌 {isSi ? 'බස් ගාස්තු' : 'Bus Fare'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="loan-preset-chip highlight-canteen"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'සල්ලි අමතක වෙලා කැන්ටිමට යාලුවා ගෙව්වා' : 'Forgot money - Friend paid canteen');
-                        setLoanPaymentSource('direct_bill');
-                      }}
-                    >
-                      🍛 {isSi ? 'සල්ලි අමතක වී කැන්ටිමට යාලුවා ගෙව්වා' : 'Friend paid Canteen Bill'}
-                    </button>
-                    <button
-                      type="button"
-                      className="loan-preset-chip"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'අතට මුදල් ණයට ගත්තා' : 'Cash borrowed into hand');
-                        setLoanPaymentSource('cash');
-                      }}
-                    >
-                      💵 {isSi ? 'අතට මුදල් ගත්තා' : 'Cash in Hand'}
-                    </button>
-                    <button
-                      type="button"
-                      className="loan-preset-chip"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'බස් එකට යාලුවා ගෙව්වා' : 'Bus fare paid by friend');
-                        setLoanPaymentSource('direct_bill');
-                      }}
-                    >
-                      🚌 {isSi ? 'බස් එකට දුන්නා' : 'Bus Fare'}
-                    </button>
-                    <button
-                      type="button"
-                      className="loan-preset-chip"
-                      onClick={() => {
-                        setLoanNote(isSi ? 'කඩේ බඩු වලට යාලුවා ගෙව්වා' : 'Friend paid shop/grocery bill');
-                        setLoanPaymentSource('direct_bill');
-                      }}
-                    >
-                      🛍️ {isSi ? 'බඩු/කෑම බිල' : 'Store Bill'}
-                    </button>
-                  </>
-                )}
-              </div>
+            {/* Compact Quick Presets Bar */}
+            <div className="compact-presets-bar">
+              {loanType === 'lent' ? (
+                <>
+                  <button
+                    type="button"
+                    className="compact-preset-pill"
+                    onClick={() => {
+                      setLoanNote(isSi ? 'කැන්ටිමෙන් කෑම' : 'Canteen Lunch');
+                      setLoanPaymentSource('cash');
+                    }}
+                  >
+                    🍛 {isSi ? 'කැන්ටිම' : 'Canteen'}
+                  </button>
+                  <button
+                    type="button"
+                    className="compact-preset-pill"
+                    onClick={() => {
+                      setLoanNote(isSi ? 'ප්‍රින්ටවුට් / කොපි' : 'Printout / Copies');
+                      setLoanPaymentSource('cash');
+                    }}
+                  >
+                    📄 {isSi ? 'ප්‍රින්ට්' : 'Prints'}
+                  </button>
+                  <button
+                    type="button"
+                    className="compact-preset-pill"
+                    onClick={() => {
+                      setLoanNote(isSi ? 'අතට දුන් මුදල' : 'Cash Lent');
+                      setLoanPaymentSource('cash');
+                    }}
+                  >
+                    💵 {isSi ? 'අතට' : 'Cash'}
+                  </button>
+                  <button
+                    type="button"
+                    className="compact-preset-pill"
+                    onClick={() => {
+                      setLoanNote(isSi ? 'බස් ගාස්තු' : 'Bus Fare');
+                      setLoanPaymentSource('cash');
+                    }}
+                  >
+                    🚌 {isSi ? 'බස්' : 'Bus'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="compact-preset-pill highlight-canteen"
+                    onClick={() => {
+                      setLoanNote(isSi ? 'සල්ලි අමතක වෙලා කැන්ටිමට යාලුවා ගෙව්වා' : 'Friend paid Canteen');
+                      setLoanPaymentSource('direct_bill');
+                    }}
+                  >
+                    🍛 {isSi ? 'කැන්ටිමට යාලුවා ගෙව්වා' : 'Canteen Bill'}
+                  </button>
+                  <button
+                    type="button"
+                    className="compact-preset-pill"
+                    onClick={() => {
+                      setLoanNote(isSi ? 'අතට මුදල් ගත්තා' : 'Cash Borrowed');
+                      setLoanPaymentSource('cash');
+                    }}
+                  >
+                    💵 {isSi ? 'අතට මුදල්' : 'Cash'}
+                  </button>
+                  <button
+                    type="button"
+                    className="compact-preset-pill"
+                    onClick={() => {
+                      setLoanNote(isSi ? 'බස් එකට යාලුවා ගෙව්වා' : 'Bus Fare');
+                      setLoanPaymentSource('direct_bill');
+                    }}
+                  >
+                    🚌 {isSi ? 'බස් ගාස්තු' : 'Bus'}
+                  </button>
+                </>
+              )}
             </div>
 
-            <form onSubmit={handleAddLoanSubmit} className="loan-form">
-              <div className="form-field">
-                <label>
-                  {loanType === 'lent'
-                    ? (isSi ? 'යාලුවාගේ නම (Friend’s Name) *' : 'Friend’s Name *')
-                    : (isSi ? 'ණයට ගත් / ගෙවූ යාලුවාගේ නම (Friend’s Name) *' : 'Friend’s Name (Who Paid / Lent) *')}
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  placeholder={loanType === 'lent' ? 'e.g. Kasun, Supun, Dinuka...' : 'e.g. Supun, Boarding Mate, Kasun...'}
-                  value={loanFriendName}
-                  onChange={e => setLoanFriendName(e.target.value)}
-                  className="clean-input clean-box-input"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>
-                  {loanType === 'lent'
-                    ? (isSi ? 'දුන් / ගෙවූ මුදල (Amount Lent / Paid) *' : 'Amount Lent / Paid *')
-                    : (isSi ? 'ගත් / යාලුවා ගෙවූ මුදල (Amount Borrowed / Friend Paid) *' : 'Amount Borrowed / Friend Paid *')}
-                </label>
-                <div className="input-group">
-                  <span className="input-prefix">{currency}</span>
+            <form onSubmit={handleAddLoanSubmit} className="compact-loan-form">
+              {/* 2 Columns: Friend Name + Amount */}
+              <div className="form-grid-2col">
+                <div className="form-field">
+                  <label>{isSi ? 'යාලුවාගේ නම *' : "Friend's Name *"}</label>
                   <input
-                    type="number"
-                    step="any"
+                    type="text"
                     required
-                    placeholder="e.g. 350, 500, 1000..."
-                    value={loanAmount}
-                    onChange={e => setLoanAmount(e.target.value)}
-                    className="clean-input font-large"
+                    autoFocus
+                    placeholder="e.g. Kasun"
+                    value={loanFriendName}
+                    onChange={e => setLoanFriendName(e.target.value)}
+                    className="clean-input clean-box-input"
                   />
                 </div>
+
+                <div className="form-field">
+                  <label>{isSi ? 'මුදල *' : 'Amount *'}</label>
+                  <div className="input-group">
+                    <span className="input-prefix">{currency}</span>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      placeholder="e.g. 350"
+                      value={loanAmount}
+                      onChange={e => setLoanAmount(e.target.value)}
+                      className="clean-input font-large"
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* Reason / Note */}
               <div className="form-field">
-                <label>{isSi ? 'හේතුව / විස්තරය (Reason / Note)' : 'Reason / Note (Optional)'}</label>
+                <label>{isSi ? 'හේතුව / මොනවටද? (විකල්ප)' : 'Reason / Note (Optional)'}</label>
                 <input
                   type="text"
                   placeholder={
                     loanType === 'lent'
-                      ? 'e.g. Canteen lunch, Photocopy printout, Bus fare...'
-                      : 'e.g. Canteen lunch when cash ran out, forgot wallet...'
+                      ? 'e.g. Canteen lunch, prints...'
+                      : 'e.g. Canteen meal, forgot wallet...'
                   }
                   value={loanNote}
                   onChange={e => setLoanNote(e.target.value)}
@@ -2474,124 +2441,96 @@ export default function App() {
                 />
               </div>
 
-              {/* Payment Source / Wallet Action Selection */}
-              <div className="loan-payment-source-box">
+              {/* Payment Account / Cash Source */}
+              <div className="form-field compact-source-field">
                 <label className="source-label">
                   {loanType === 'lent'
-                    ? (isSi ? 'මුදල් ගෙවූ ආකාරය (Payment Account):' : 'Paid from which account?')
-                    : (isSi ? 'මුදල් ලැබුණු / ගෙවූ ආකාරය (Payment / Cash Flow):' : 'How was this payment handled?')}
+                    ? (isSi ? 'මුදල් ගෙවූ ගිණුම:' : 'Paid from:')
+                    : (isSi ? 'මුදල් ගනුදෙනුව සිදුවූ ආකාරය:' : 'How paid / received:')}
                 </label>
 
                 {loanType === 'lent' ? (
-                  <div className="source-options-row">
+                  <div className="compact-source-row">
                     <button
                       type="button"
-                      className={`source-radio-pill ${loanPaymentSource === 'cash' ? 'active-src' : ''}`}
+                      className={`compact-src-pill ${loanPaymentSource === 'cash' ? 'active-src' : ''}`}
                       onClick={() => setLoanPaymentSource('cash')}
                     >
-                      <Banknote size={15} />
-                      <div>
-                        <strong>{isSi ? '💵 අතේ ඇති මුදලින්' : '💵 Cash in Hand'}</strong>
-                        <small>{isSi ? 'අතේ ශේෂයෙන් අඩු වේ' : 'Deducts from Cash'}</small>
-                      </div>
+                      <Banknote size={14} />
+                      <span>{isSi ? '💵 අතේ මුදලින්' : '💵 Cash'}</span>
                     </button>
-
                     <button
                       type="button"
-                      className={`source-radio-pill ${loanPaymentSource === 'bank' ? 'active-src' : ''}`}
+                      className={`compact-src-pill ${loanPaymentSource === 'bank' ? 'active-src' : ''}`}
                       onClick={() => setLoanPaymentSource('bank')}
                     >
-                      <Landmark size={15} />
-                      <div>
-                        <strong>{isSi ? '🏦 බැංකුවෙන් / Card' : '🏦 Bank / Card'}</strong>
-                        <small>{isSi ? 'බැංකුවෙන් අඩු වේ' : 'Deducts from Bank'}</small>
-                      </div>
+                      <Landmark size={14} />
+                      <span>{isSi ? '🏦 බැංකුවෙන්' : '🏦 Bank'}</span>
                     </button>
-
                     <button
                       type="button"
-                      className={`source-radio-pill ${loanPaymentSource === 'none' ? 'active-src' : ''}`}
+                      className={`compact-src-pill ${loanPaymentSource === 'none' ? 'active-src' : ''}`}
                       onClick={() => setLoanPaymentSource('none')}
                     >
-                      <div>
-                        <strong>{isSi ? '🚫 ශේෂය වෙනස් නොවේ' : '🚫 Record Only'}</strong>
-                        <small>{isSi ? 'පසුම්බිය වෙනස් නොවේ' : 'No wallet change'}</small>
-                      </div>
+                      <span>{isSi ? '🚫 සටහනක් පමණි' : '🚫 Record Only'}</span>
                     </button>
                   </div>
                 ) : (
-                  <div className="source-options-row vertical-options">
+                  <div className="compact-source-row">
                     <button
                       type="button"
-                      className={`source-radio-pill direct-bill-pill ${loanPaymentSource === 'direct_bill' ? 'active-src-borrowed' : ''}`}
+                      className={`compact-src-pill highlight-direct ${loanPaymentSource === 'direct_bill' ? 'active-src-borrowed' : ''}`}
                       onClick={() => setLoanPaymentSource('direct_bill')}
+                      title="Friend paid canteen counter directly. No fake cash added to your wallet."
                     >
-                      <Receipt size={17} />
-                      <div>
-                        <strong>{isSi ? '🍛 යාලුවා කෙලින්ම බිල ගෙව්වා (Direct Bill - Recommended)' : '🍛 Friend Paid Counter Directly (Direct Bill)'}</strong>
-                        <small>
-                          {isSi
-                            ? 'සල්ලි අමතක වූ නිසා යාලුවා කෙලින්ම කැන්ටිමට/කඩේට ගෙව්වා. අතේ මුදල බොරුවට වැඩි නොවේ. යාලුවාට දිය යුතු ණය පමණක් සටහන් වේ.'
-                            : 'Friend paid the canteen/shop directly. Does NOT add fake cash to hand. Accurate debt tracked!'}
-                        </small>
-                      </div>
+                      <Receipt size={14} />
+                      <span>{isSi ? '🍛 Direct Bill (කැන්ටිමට)' : '🍛 Direct Bill'}</span>
                     </button>
-
-                    <div className="sub-source-grid">
-                      <button
-                        type="button"
-                        className={`source-radio-pill ${loanPaymentSource === 'cash' ? 'active-src-borrowed' : ''}`}
-                        onClick={() => setLoanPaymentSource('cash')}
-                      >
-                        <Banknote size={15} />
-                        <div>
-                          <strong>{isSi ? '💵 අතට මුදල් ගත්තා' : '💵 Cash Received'}</strong>
-                          <small>{isSi ? 'අතේ මුදලට එකතු වේ' : 'Adds to Cash in Hand'}</small>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`source-radio-pill ${loanPaymentSource === 'bank' ? 'active-src-borrowed' : ''}`}
-                        onClick={() => setLoanPaymentSource('bank')}
-                      >
-                        <Landmark size={15} />
-                        <div>
-                          <strong>{isSi ? '🏦 බැංකුවට දැම්මා' : '🏦 Bank Transfer'}</strong>
-                          <small>{isSi ? 'බැංකුවට එකතු වේ' : 'Adds to Bank'}</small>
-                        </div>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className={`compact-src-pill ${loanPaymentSource === 'cash' ? 'active-src-borrowed' : ''}`}
+                      onClick={() => setLoanPaymentSource('cash')}
+                    >
+                      <Banknote size={14} />
+                      <span>{isSi ? '💵 අතට ගත්තා' : '💵 Cash in Hand'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`compact-src-pill ${loanPaymentSource === 'bank' ? 'active-src-borrowed' : ''}`}
+                      onClick={() => setLoanPaymentSource('bank')}
+                    >
+                      <Landmark size={14} />
+                      <span>{isSi ? '🏦 බැංකුවට' : '🏦 Bank'}</span>
+                    </button>
                   </div>
                 )}
               </div>
 
-              <div className="form-field">
-                <label>
-                  {isSi
-                    ? 'යාලුවාගේ දුරකථන අංකය (WhatsApp සඳහා - විකල්ප)'
-                    : 'Friend’s Phone Number (Optional - for WhatsApp)'}
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 0771234567"
-                  value={loanPhone}
-                  onChange={e => setLoanPhone(e.target.value)}
-                  className="clean-input clean-box-input"
-                />
+              {/* 2 Columns: Phone + Date */}
+              <div className="form-grid-2col">
+                <div className="form-field">
+                  <label>{isSi ? 'දුරකථනය (WhatsApp)' : 'Phone (Optional)'}</label>
+                  <input
+                    type="text"
+                    placeholder="077xxxxxxx"
+                    value={loanPhone}
+                    onChange={e => setLoanPhone(e.target.value)}
+                    className="clean-input clean-box-input"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>{isSi ? 'දිනය' : 'Date'}</label>
+                  <input
+                    type="date"
+                    value={loanDate}
+                    onChange={e => setLoanDate(e.target.value)}
+                    className="clean-input clean-box-input"
+                  />
+                </div>
               </div>
 
-              <div className="form-field">
-                <label>{isSi ? 'දිනය (Date)' : 'Date'}</label>
-                <input
-                  type="date"
-                  value={loanDate}
-                  onChange={e => setLoanDate(e.target.value)}
-                  className="clean-input clean-box-input"
-                />
-              </div>
-
-              <div className="modal-actions-row">
+              <div className="modal-actions-row compact-actions-row">
                 <button
                   type="button"
                   onClick={() => setLoanModalOpen(false)}
@@ -2604,8 +2543,8 @@ export default function App() {
                   className={`btn-modal-confirm ${loanType === 'borrowed' ? 'btn-borrow-confirm' : ''}`}
                 >
                   {loanType === 'lent'
-                    ? (isSi ? 'සටහන් කරන්න (Owed to You)' : 'Save Record (Owed to You)')
-                    : (isSi ? 'ණය සටහන් කරන්න (You Owe Friend)' : 'Save Record (You Owe Friend)')}
+                    ? (isSi ? 'සටහන් කරන්න' : 'Save Record')
+                    : (isSi ? 'ණය සටහන් කරන්න' : 'Save Record')}
                 </button>
               </div>
             </form>

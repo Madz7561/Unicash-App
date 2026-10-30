@@ -3745,210 +3745,173 @@
   color: #ffffff;
 }
 
-/* 6. Redesigned Friend Debt / Loan Modal (Crystal Clear Distinction) */
-.loan-record-modal {
-  max-width: 500px;
+/* 6. Redesigned Compact & Ergonomic Friend Debt / Loan Modal */
+.compact-debt-modal {
+  max-width: 440px !important;
+  max-height: 88vh !important;
+  overflow-y: auto !important;
+  padding: 1.15rem 1.25rem !important;
+  gap: 0.65rem !important;
+  border-radius: 1.1rem !important;
+  scrollbar-width: thin;
 }
 
-.loan-mode-cards-grid {
+.compact-debt-modal::-webkit-scrollbar {
+  width: 5px;
+}
+
+.compact-debt-modal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.compact-debt-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
-}
-
-.loan-mode-big-card {
-  padding: 0.85rem;
-  border-radius: 0.95rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2px solid var(--border-color);
-  cursor: pointer;
-  transition: all 0.18s ease;
-  display: flex;
-  flex-direction: column;
   gap: 0.35rem;
-}
-
-.loan-mode-big-card:hover {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.loan-mode-big-card.active-mode-lent {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: #f59e0b;
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.22);
-}
-
-.loan-mode-big-card.active-mode-borrowed {
-  background: rgba(168, 85, 247, 0.12);
-  border-color: #a855f7;
-  box-shadow: 0 0 16px rgba(168, 85, 247, 0.22);
-}
-
-.mode-card-icon-title {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.mode-card-icon-title strong {
-  font-size: 0.86rem;
-  font-weight: 750;
-  color: var(--text-main);
-  line-height: 1.25;
-}
-
-.mode-icon.amber {
-  color: #fbbf24;
-}
-
-.mode-icon.purple {
-  color: #c084fc;
-}
-
-.mode-card-desc {
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  line-height: 1.35;
-  margin: 0;
-}
-
-/* Situation Presets */
-.loan-presets-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 0.9rem;
-  padding: 0.65rem 0.8rem;
-  background: rgba(15, 23, 42, 0.4);
+  padding: 0.25rem;
+  background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--border-color);
-  border-radius: 0.85rem;
+  border-radius: 0.75rem;
 }
 
-.presets-label {
-  font-size: 0.72rem;
-  font-weight: 750;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.compact-debt-btn {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-}
-
-.loan-presets-bar {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.loan-preset-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.32rem 0.65rem;
-  font-size: 0.74rem;
-  font-weight: 650;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.48rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
   border-radius: 0.6rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.compact-debt-btn:hover {
+  color: var(--text-muted);
+}
+
+.compact-debt-btn.active-lent {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.compact-debt-btn.active-borrowed {
+  background: rgba(168, 85, 247, 0.2);
+  color: #e9d5ff;
+  border-color: rgba(168, 85, 247, 0.45);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+}
+
+/* Compact Situation Presets */
+.compact-presets-bar {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.15rem;
+}
+
+.compact-preset-pill {
+  padding: 0.26rem 0.55rem;
+  font-size: 0.73rem;
+  font-weight: 650;
+  border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 
-.loan-preset-chip:hover {
+.compact-preset-pill:hover {
   background: rgba(255, 255, 255, 0.12);
-  color: var(--text-main);
-  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
-.loan-preset-chip.highlight-canteen {
-  background: rgba(168, 85, 247, 0.15);
-  border-color: rgba(168, 85, 247, 0.35);
+.compact-preset-pill.highlight-canteen {
+  background: rgba(168, 85, 247, 0.16);
+  border-color: rgba(168, 85, 247, 0.38);
   color: #e9d5ff;
 }
 
-/* Payment & Wallet Source Options */
-.loan-payment-source-box {
+/* Compact Form Layout */
+.compact-loan-form {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin: 0.65rem 0 0.85rem 0;
+  gap: 0.55rem;
 }
 
-.source-label {
-  font-size: 0.75rem;
-  font-weight: 750;
-  color: var(--text-muted);
-}
-
-.source-options-row {
+.form-grid-2col {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
 }
 
-.source-options-row.vertical-options {
+.compact-source-field {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
+  margin: 0.1rem 0;
 }
 
-.source-radio-pill {
+.compact-source-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.compact-src-pill {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 0.8rem;
+  justify-content: center;
+  gap: 0.32rem;
+  padding: 0.46rem 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 0.6rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-color);
   color: var(--text-dim);
-  text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.source-radio-pill strong {
-  display: block;
-  font-size: 0.78rem;
-  color: var(--text-main);
+.compact-src-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
 }
 
-.source-radio-pill small {
-  display: block;
-  font-size: 0.68rem;
-  color: var(--text-dim);
-  line-height: 1.25;
-}
-
-.source-radio-pill.active-src {
-  background: rgba(16, 185, 129, 0.14);
+.compact-src-pill.active-src {
+  background: rgba(16, 185, 129, 0.2);
   border-color: #10b981;
   color: #a7f3d0;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
 }
 
-.source-radio-pill.active-src-borrowed {
-  background: rgba(168, 85, 247, 0.15);
+.compact-src-pill.active-src-borrowed {
+  background: rgba(168, 85, 247, 0.2);
   border-color: #a855f7;
   color: #e9d5ff;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
 }
 
-.direct-bill-pill {
-  padding: 0.7rem 0.85rem;
+.compact-src-pill.highlight-direct {
+  font-weight: 750;
 }
 
-.direct-bill-pill strong {
-  font-size: 0.84rem;
-  color: #f3e8ff;
-}
-
-.sub-source-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+.compact-actions-row {
+  margin-top: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Debt list item badges */
