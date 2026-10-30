@@ -51,6 +51,10 @@ import {
   Send,
   Sparkles,
   Receipt,
+  Landmark,
+  CreditCard,
+  ArrowLeftRight,
+  Banknote,
 } from 'lucide-react';
 import './App.css';
 
@@ -94,8 +98,10 @@ export default function App() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [category, setCategory] = useState('lunch');
+  const [entryAccount, setEntryAccount] = useState('cash'); // 'cash' | 'bank'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState('all'); // 'all' | 'cash' | 'bank'
 
   // Loan & Debt Modal state (Tracking both Lent & Borrowed money)
   const [loanModalOpen, setLoanModalOpen] = useState(false);
@@ -105,14 +111,20 @@ export default function App() {
   const [loanNote, setLoanNote] = useState('');
   const [loanPhone, setLoanPhone] = useState('');
   const [loanDate, setLoanDate] = useState(new Date().toISOString().split('T')[0]);
-  const [loanDeductWallet, setLoanDeductWallet] = useState(true);
+  const [loanPaymentSource, setLoanPaymentSource] = useState('cash'); // 'cash' | 'bank' | 'direct_bill' | 'none'
   const [debtDirectionFilter, setDebtDirectionFilter] = useState('all'); // 'all' | 'lent' | 'borrowed'
   const [loanFilter, setLoanFilter] = useState('all'); // 'all' | 'pending' | 'settled'
   const [loanSearch, setLoanSearch] = useState('');
 
   // Edit current balance directly
   const [isEditingBalance, setIsEditingBalance] = useState(false);
+  const [balanceEditTarget, setBalanceEditTarget] = useState('cash'); // 'cash' | 'bank'
   const [directBalanceInput, setDirectBalanceInput] = useState('');
+
+  // ATM Transfer Modal (Bank to Cash in Hand / Deposit)
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferDirection, setTransferDirection] = useState('bank-to-cash'); // 'bank-to-cash' | 'cash-to-bank'
 
   // Toast feedback state
   const [toastMsg, setToastMsg] = useState('');
@@ -333,7 +345,31 @@ export default function App() {
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-  const currentBalance = totalIncome - totalExpense;
+  // 1. Cash in Hand calculations (default is 'cash' for backward compatibility)
+  const cashIncome = transactions
+    .filter(t => t.type === 'income' && (t.account || 'cash') === 'cash')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+  const cashExpense = transactions
+    .filter(t => t.type === 'expense' && (t.account || 'cash') === 'cash')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+  const cashBalance = cashIncome - cashExpense;
+
+  // 2. Bank Account calculations (Reloads, Online payments, Transfers)
+  const bankIncome = transactions
+    .filter(t => t.type === 'income' && t.account === 'bank')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+  const bankExpense = transactions
+    .filter(t => t.type === 'expense' && t.account === 'bank')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+  const bankBalance = bankIncome - bankExpense;
+
+  // 3. Combined Total Net Balance
+  const totalBalance = cashBalance + bankBalance;
+  const currentBalance = cashBalance; // For cash survival estimate
 
   const todaySpent = transactions
     .filter(t => t.type === 'expense' && t.date === todayStr)
@@ -344,8 +380,8 @@ export default function App() {
   const numDaysActive = Math.max(1, uniqueDates.length);
   const avgDailySpend = Math.round(totalExpense / numDaysActive) || 450;
 
-  const estimatedDaysLeft = currentBalance > 0 && avgDailySpend > 0
-    ? Math.max(1, Math.floor(currentBalance / avgDailySpend))
+  const estimatedDaysLeft = cashBalance > 0 && avgDailySpend > 0
+    ? Math.max(1, Math.floor(cashBalance / avgDailySpend))
     : 0;
 
   // ================= FRIEND DEBT CALCULATIONS =================
@@ -376,14 +412,16 @@ export default function App() {
     if (isNaN(amt) || amt <= 0) return;
 
     const cat = CATEGORIES[category] || CATEGORIES.other;
+    const isBank = entryAccount === 'bank';
     const defaultNote = entryType === 'income'
-      ? (isSi ? 'ගෙදරින් ලැබුණු මුදල්' : 'Received from Home')
+      ? (isSi ? (isBank ? 'ගෙදරින් Bank එකට දැම්මා' : 'ගෙදරින් ලැබුණු මුදල්') : (isBank ? 'Bank Deposit from Home' : 'Received from Home'))
       : (isSi ? cat.nameSi : cat.nameEn);
 
     const newTx = {
       id: 'tx-' + Date.now(),
       type: entryType,
       amount: amt,
+      account: entryAccount,
       category: entryType === 'income' ? 'other' : category,
       date: todayStr,
       note: note.trim() || defaultNote,
@@ -394,14 +432,18 @@ export default function App() {
     saveUserData(updated, settings, loans);
     setAmount('');
     setNote('');
-    showToast(entryType === 'expense' ? `Spent ${currency} ${amt}` : `Added ${currency} ${amt}`);
+    showToast(entryType === 'expense' 
+      ? `Spent ${currency} ${amt.toLocaleString()} via ${isBank ? '🏦 Bank' : '💵 Cash'}` 
+      : `Added ${currency} ${amt.toLocaleString()} to ${isBank ? '🏦 Bank' : '💵 Cash'}`);
   };
 
   const handleQuickExpense = (item) => {
+    const acc = item.account || (item.category === 'reload' ? 'bank' : 'cash');
     const newTx = {
       id: 'tx-' + Date.now(),
       type: 'expense',
       amount: item.amount,
+      account: acc,
       category: item.category,
       date: todayStr,
       note: isSi ? item.labelSi : item.labelEn,
@@ -409,14 +451,16 @@ export default function App() {
     const updated = [newTx, ...transactions];
     setTransactions(updated);
     saveUserData(updated, settings, loans);
-    showToast(`Quick Expense: ${item.labelEn} (${currency} ${item.amount})`);
+    showToast(`Quick Expense: ${item.labelEn} (${currency} ${item.amount} via ${acc === 'bank' ? '🏦 Bank' : '💵 Cash'})`);
   };
 
   const handleQuickIncome = (item) => {
+    const acc = item.account || 'cash';
     const newTx = {
       id: 'tx-' + Date.now(),
       type: 'income',
       amount: item.amount,
+      account: acc,
       category: 'other',
       date: todayStr,
       note: isSi ? item.labelSi : item.labelEn,
@@ -424,25 +468,32 @@ export default function App() {
     const updated = [newTx, ...transactions];
     setTransactions(updated);
     saveUserData(updated, settings, loans);
-    showToast(`Added ${currency} ${item.amount} from Home`);
+    showToast(`Added ${currency} ${item.amount.toLocaleString()} to ${acc === 'bank' ? '🏦 Bank' : '💵 Cash'}`);
   };
 
   const handleDirectBalanceSave = (e) => {
     e.preventDefault();
-    const targetBalance = parseFloat(directBalanceInput);
-    if (isNaN(targetBalance)) return;
+    const targetVal = parseFloat(directBalanceInput);
+    if (isNaN(targetVal)) return;
 
-    const difference = targetBalance - currentBalance;
+    const isBank = balanceEditTarget === 'bank';
+    const currentVal = isBank ? bankBalance : cashBalance;
+    const difference = targetVal - currentVal;
     if (difference !== 0) {
       const adjustmentTx = {
         id: 'tx-' + Date.now(),
         type: difference > 0 ? 'income' : 'expense',
         amount: Math.abs(difference),
+        account: isBank ? 'bank' : 'cash',
         category: 'other',
         date: todayStr,
         note: isSi
-          ? `අතේ ඇති මුදල සකස් කිරීම (${currency} ${targetBalance.toLocaleString()})`
-          : `Direct Cash Balance Adjustment to ${currency} ${targetBalance.toLocaleString()}`,
+          ? (isBank 
+              ? `බැංකු ශේෂය සකස් කිරීම (${currency} ${targetVal.toLocaleString()})`
+              : `අතේ ඇති මුදල සකස් කිරීම (${currency} ${targetVal.toLocaleString()})`)
+          : (isBank 
+              ? `Direct Bank Balance Adjustment to ${currency} ${targetVal.toLocaleString()}`
+              : `Direct Cash Balance Adjustment to ${currency} ${targetVal.toLocaleString()}`),
       };
       const updated = [adjustmentTx, ...transactions];
       setTransactions(updated);
@@ -451,7 +502,71 @@ export default function App() {
 
     setIsEditingBalance(false);
     setDirectBalanceInput('');
-    showToast(`Cash in Hand updated to ${currency} ${targetBalance.toLocaleString()}`);
+    showToast(isSi 
+      ? `${isBank ? 'බැංකු ශේෂය' : 'අතේ ඇති මුදල'} ${currency} ${targetVal.toLocaleString()} ලෙස සකසන ලදී` 
+      : `${isBank ? 'Bank' : 'Cash'} balance set to ${currency} ${targetVal.toLocaleString()}`);
+  };
+
+  // ATM Cash Withdrawal or Cash Deposit
+  const handleTransferSubmit = (e) => {
+    e.preventDefault();
+    const amt = parseFloat(transferAmount);
+    if (isNaN(amt) || amt <= 0) return;
+
+    if (transferDirection === 'bank-to-cash') {
+      const bankTx = {
+        id: 'tx-tf-bank-' + Date.now(),
+        type: 'expense',
+        amount: amt,
+        account: 'bank',
+        category: 'other',
+        date: todayStr,
+        note: isSi ? 'ATM එකෙන් මුදල් ගැනීම (Bank ➔ Cash)' : 'ATM Cash Withdrawal (Bank ➔ Cash)',
+      };
+      const cashTx = {
+        id: 'tx-tf-cash-' + (Date.now() + 1),
+        type: 'income',
+        amount: amt,
+        account: 'cash',
+        category: 'other',
+        date: todayStr,
+        note: isSi ? 'ATM මුදල් පසුම්බියට (Cash in Hand)' : 'ATM Cash in Hand',
+      };
+      const updated = [cashTx, bankTx, ...transactions];
+      setTransactions(updated);
+      saveUserData(updated, settings, loans);
+      showToast(isSi 
+        ? `ATM මාරුව සාර්ථකයි! ${currency} ${amt.toLocaleString()} අතේ මුදලට එකතු විය.` 
+        : `ATM transfer complete! Added ${currency} ${amt.toLocaleString()} to Cash in Hand.`);
+    } else {
+      const cashTx = {
+        id: 'tx-tf-cash-' + Date.now(),
+        type: 'expense',
+        amount: amt,
+        account: 'cash',
+        category: 'other',
+        date: todayStr,
+        note: isSi ? 'බැංකුවට දැමූ මුදල් (Cash ➔ Bank)' : 'Cash Deposit to Bank',
+      };
+      const bankTx = {
+        id: 'tx-tf-bank-' + (Date.now() + 1),
+        type: 'income',
+        amount: amt,
+        account: 'bank',
+        category: 'other',
+        date: todayStr,
+        note: isSi ? 'බැංකු තැන්පතුව (Bank Deposit)' : 'Bank Account Deposit',
+      };
+      const updated = [bankTx, cashTx, ...transactions];
+      setTransactions(updated);
+      saveUserData(updated, settings, loans);
+      showToast(isSi 
+        ? `තැන්පතුව සාර්ථකයි! ${currency} ${amt.toLocaleString()} බැංකුවට එකතු විය.` 
+        : `Deposit complete! Added ${currency} ${amt.toLocaleString()} to Bank.`);
+    }
+
+    setTransferModalOpen(false);
+    setTransferAmount('');
   };
 
   const handleDelete = (id) => {
@@ -476,43 +591,73 @@ export default function App() {
       phone: loanPhone.trim(),
       date: loanDate || todayStr,
       status: 'pending',
-      deductedFromWallet: loanDeductWallet,
+      paymentSource: loanPaymentSource, // 'cash' | 'bank' | 'direct_bill' | 'none'
       createdAt: Date.now(),
     };
 
     let updatedTx = transactions;
-    if (loanDeductWallet) {
-      if (loanType === 'lent') {
-        // Cash leaves wallet (Expense)
+
+    if (loanType === 'lent') {
+      // 🤝 I paid for friend / lent money
+      if (loanPaymentSource === 'cash') {
         const tx = {
           id: 'tx-loan-' + Date.now(),
           type: 'expense',
           amount: amt,
+          account: 'cash',
           category: 'lent',
           date: newLoan.date,
-          note: `Lent to ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
+          note: `Paid for ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
           loanId: newLoan.id,
         };
         updatedTx = [tx, ...transactions];
-        setTransactions(updatedTx);
-      } else {
-        // Cash enters wallet (Income from borrowed money)
+      } else if (loanPaymentSource === 'bank') {
+        const tx = {
+          id: 'tx-loan-' + Date.now(),
+          type: 'expense',
+          amount: amt,
+          account: 'bank',
+          category: 'lent',
+          date: newLoan.date,
+          note: `Paid from Bank for ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
+          loanId: newLoan.id,
+        };
+        updatedTx = [tx, ...transactions];
+      }
+      // If 'none', no wallet deduction
+    } else {
+      // 📥 Friend paid for me / I borrowed
+      if (loanPaymentSource === 'cash') {
         const tx = {
           id: 'tx-borrow-' + Date.now(),
           type: 'income',
           amount: amt,
+          account: 'cash',
           category: 'borrowed',
           date: newLoan.date,
-          note: `Borrowed from ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
+          note: `Cash borrowed from ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
           loanId: newLoan.id,
         };
         updatedTx = [tx, ...transactions];
-        setTransactions(updatedTx);
+      } else if (loanPaymentSource === 'bank') {
+        const tx = {
+          id: 'tx-borrow-' + Date.now(),
+          type: 'income',
+          amount: amt,
+          account: 'bank',
+          category: 'borrowed',
+          date: newLoan.date,
+          note: `Bank transfer from ${newLoan.friendName}${newLoan.note ? ` (${newLoan.note})` : ''}`,
+          loanId: newLoan.id,
+        };
+        updatedTx = [tx, ...transactions];
       }
+      // If 'direct_bill', friend paid directly at counter/canteen, so physical cash is NOT falsely added!
     }
 
     const updatedLoans = [newLoan, ...loans];
     setLoans(updatedLoans);
+    setTransactions(updatedTx);
     saveUserData(updatedTx, settings, updatedLoans);
 
     // Reset form
@@ -525,8 +670,8 @@ export default function App() {
 
     showToast(
       loanType === 'lent'
-        ? `Recorded: Lent ${currency} ${amt.toLocaleString()} to ${newLoan.friendName}`
-        : `Recorded: Borrowed ${currency} ${amt.toLocaleString()} from ${newLoan.friendName}`
+        ? `Recorded: Paid ${currency} ${amt.toLocaleString()} for ${newLoan.friendName} (Owed to you)`
+        : `Recorded: ${newLoan.friendName} paid / lent ${currency} ${amt.toLocaleString()} (You owe friend)`
     );
   };
 
@@ -535,6 +680,7 @@ export default function App() {
     if (!target) return;
 
     const targetType = target.type || 'lent';
+    const acc = target.paymentSource === 'bank' ? 'bank' : 'cash';
     let updatedTx = transactions;
 
     if (targetType === 'lent') {
@@ -543,6 +689,7 @@ export default function App() {
         id: 'tx-repay-' + Date.now(),
         type: 'income',
         amount: target.amount,
+        account: acc,
         category: 'lent',
         date: todayStr,
         note: `Repaid by ${target.friendName}${target.note ? ` (Settled: ${target.note})` : ''}`,
@@ -550,13 +697,14 @@ export default function App() {
       };
       updatedTx = [repaymentTx, ...transactions];
       setTransactions(updatedTx);
-      showToast(`Repaid! Added ${currency} ${target.amount.toLocaleString()} to wallet.`);
+      showToast(`Repaid! Added ${currency} ${target.amount.toLocaleString()} to ${acc === 'bank' ? '🏦 Bank' : '💵 Cash in Hand'}.`);
     } else {
       // I paid back friend -> cash leaves wallet (Expense)
       const payBackTx = {
         id: 'tx-payback-' + Date.now(),
         type: 'expense',
         amount: target.amount,
+        account: acc,
         category: 'borrowed',
         date: todayStr,
         note: `Paid back loan to ${target.friendName}${target.note ? ` (${target.note})` : ''}`,
@@ -564,12 +712,12 @@ export default function App() {
       };
       updatedTx = [payBackTx, ...transactions];
       setTransactions(updatedTx);
-      showToast(`Settled! Paid back ${currency} ${target.amount.toLocaleString()} to ${target.friendName}.`);
+      showToast(`Settled! Paid back ${currency} ${target.amount.toLocaleString()} to ${target.friendName} from ${acc === 'bank' ? '🏦 Bank' : '💵 Cash in Hand'}.`);
     }
 
     const updatedLoans = loans.map(l =>
       l.id === loanId
-        ? { ...l, status: 'settled', settledAt: Date.now(), settledDate: todayStr }
+        ? { ...l, status: 'settled', settledAt: Date.now(), settledDate: todayStr, settledAccount: acc }
         : l
     );
     setLoans(updatedLoans);
@@ -647,6 +795,13 @@ export default function App() {
 
   // Filtered transactions for wallet tab
   const filtered = transactions.filter(t => {
+    // 1. Account filter (cash vs bank)
+    const acc = t.account || 'cash';
+    if (selectedAccountFilter !== 'all' && acc !== selectedAccountFilter) {
+      return false;
+    }
+
+    // 2. Category filter
     const effCat = getEffectiveCategory(t);
     if (selectedCategoryFilter !== 'all') {
       if (selectedCategoryFilter === 'lent' && effCat !== 'lent') return false;
@@ -660,7 +815,8 @@ export default function App() {
     const amtMatch = String(t.amount).includes(q);
     const cat = CATEGORIES[effCat] || CATEGORIES.other;
     const catMatch = (cat?.nameEn || '').toLowerCase().includes(q) || (cat?.nameSi || '').includes(q);
-    return noteMatch || amtMatch || catMatch;
+    const accMatch = (acc === 'bank' ? 'bank බැංකු reload රිලෝඩ්' : 'cash අතේ').toLowerCase().includes(q);
+    return noteMatch || amtMatch || catMatch || accMatch;
   });
 
   // Filtered loans for Debts tab
@@ -1022,82 +1178,143 @@ export default function App() {
         {activeTab === 'wallet' && (
           <main className="tab-content">
             
-            {/* 1. Real Cash-in-Hand Hero Card */}
-            <section className="hero-balance-card">
-              <div className="hero-top-row">
-                <div className="hero-title-with-badge">
-                  <img src="/app-icon.png" alt="UniCash" className="hero-app-badge" />
-                  <div>
-                    <span className="hero-subtitle">
-                      {isSi ? `💰 ${currentUser.name} ගේ අතේ ඇති මුදල` : `${currentUser.name}'s Cash in Hand`}
-                    </span>
-                    <span className="hero-tagline">@{currentUser.username} • Campus Wallet</span>
+            {/* 1. Dual-Wallet Balance System (Cash in Hand & Bank Account) */}
+            <section className="hero-balance-section">
+              {/* Total Available Balance Banner */}
+              <div className="total-net-card">
+                <div className="total-net-left">
+                  <div className="hero-title-with-badge">
+                    <img src="/app-icon.png" alt="UniCash" className="hero-app-badge" />
+                    <div>
+                      <span className="hero-subtitle">
+                        {isSi ? `💰 ${currentUser.name} ගේ මුළු ශේෂය` : `${currentUser.name}'s Total Balance`}
+                      </span>
+                      <span className="hero-tagline">@{currentUser.username} • Cash + Bank Available</span>
+                    </div>
+                  </div>
+                  <div className="total-net-amount">
+                    <span className="currency-mark">{currency}</span>
+                    <span className="total-net-val">{totalBalance.toLocaleString()}</span>
                   </div>
                 </div>
-                
-                <button
-                  onClick={() => {
-                    setDirectBalanceInput(String(Math.max(0, currentBalance)));
-                    setIsEditingBalance(true);
-                  }}
-                  className="btn-edit-balance"
-                  title={isSi ? 'දැනට අතේ ඇති මුදල කෙළින්ම ඇතුළත් කරන්න' : 'Set Exact Cash in Hand'}
-                >
-                  <Edit3 size={13} />
-                  <span>{isSi ? 'මුදල වෙනස් කරන්න' : 'Edit Balance'}</span>
-                </button>
-              </div>
 
-              <div className="hero-main-amount">
-                <span className="currency-mark">{currency}</span>
-                <span className={`balance-number ${currentBalance < 1000 ? 'text-danger-warn' : ''}`}>
-                  {currentBalance.toLocaleString()}
-                </span>
-              </div>
-
-              {/* Dynamic survival / runway estimate */}
-              <div className="runway-status-box">
-                {currentBalance <= 0 ? (
-                  <div className="runway-alert danger">
-                    <AlertTriangle size={16} />
-                    <span>
-                      {isSi
-                        ? '🚨 අතේ මුදල් ඉවර වී ඇත! ගෙදරින් සල්ලි ලැබුණු විට පහත බොත්තමෙන් ඇතුළත් කරන්න.'
-                        : '🚨 You have run out of cash! Tap "+ Add Money" when cash arrives from home.'}
-                    </span>
+                <div className="total-net-breakdown">
+                  <div className="breakdown-pill cash-pill">
+                    <span className="pill-dot dot-cash"></span>
+                    <span className="breakdown-label">{isSi ? 'අතේ මුදල්:' : 'Cash:'}</span>
+                    <strong className="breakdown-val">{currency} {cashBalance.toLocaleString()}</strong>
                   </div>
-                ) : currentBalance < 1000 ? (
-                  <div className="runway-alert warning">
-                    <AlertTriangle size={16} />
-                    <span>
-                      {isSi
-                        ? `⚠️ සල්ලි ඉවර වේගෙන එන්නේ (ඉතිරි ${currency} ${currentBalance.toLocaleString()} යි). අත්‍යවශ්‍ය දේට පමණක් වියදම් කරන්න.`
-                        : `⚠️ Low cash alert! Only ${currency} ${currentBalance.toLocaleString()} left. Spend carefully on essentials.`}
-                    </span>
+                  <div className="breakdown-pill bank-pill">
+                    <span className="pill-dot dot-bank"></span>
+                    <span className="breakdown-label">{isSi ? 'බැංකුව:' : 'Bank:'}</span>
+                    <strong className="breakdown-val">{currency} {bankBalance.toLocaleString()}</strong>
                   </div>
-                ) : (
-                  <div className="runway-pill healthy">
-                    <Clock size={15} />
-                    <span>
-                      {isSi ? (
-                        <>
-                          දෛනික සාමාන්‍ය වියදම ~<strong>{currency} {avgDailySpend}</strong> අනුව, මෙම මුදල තව <strong>දින ~{estimatedDaysLeft} කට</strong> පමණ සෑහේ.
-                        </>
-                      ) : (
-                        <>
-                          At ~<strong>{currency} {avgDailySpend}/day</strong>, your cash will safely last for ~<strong>{estimatedDaysLeft} days</strong>.
-                        </>
-                      )}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {todaySpent > 0 && (
-                <div className="hero-subinfo">
-                  <span>{isSi ? 'අද දින වැය වූ මුදල: ' : 'Spent Today: '} <strong>{currency} {todaySpent.toLocaleString()}</strong></span>
                 </div>
-              )}
+              </div>
+
+              {/* Dual Accounts Grid: Cash in Hand & Bank Account */}
+              <div className="dual-accounts-grid">
+                {/* Account 1: Cash in Hand */}
+                <div className="account-card cash-account-card">
+                  <div className="acc-card-header">
+                    <div className="acc-card-title-group">
+                      <div className="acc-icon-badge cash-badge">💵</div>
+                      <div>
+                        <h4 className="acc-name">{isSi ? 'අතේ ඇති මුදල' : 'Cash in Hand'}</h4>
+                        <span className="acc-sub">{isSi ? 'පසුම්බිය • කැන්ටිම • බස්' : 'Physical Cash in Wallet'}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBalanceEditTarget('cash');
+                        setDirectBalanceInput(String(Math.max(0, cashBalance)));
+                        setIsEditingBalance(true);
+                      }}
+                      className="btn-acc-edit"
+                      title={isSi ? 'අතේ ඇති මුදල සකසන්න' : 'Set Exact Cash in Hand'}
+                    >
+                      <Edit3 size={12} />
+                      <span>{isSi ? 'සකසන්න' : 'Edit'}</span>
+                    </button>
+                  </div>
+
+                  <div className="acc-card-amount">
+                    <span className="currency-mark-sub">{currency}</span>
+                    <span className={`acc-amount-val ${cashBalance < 500 ? 'text-danger-warn' : ''}`}>
+                      {cashBalance.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Runway status */}
+                  {cashBalance <= 0 ? (
+                    <div className="acc-alert danger">
+                      <AlertTriangle size={13} />
+                      <span>{isSi ? 'අතේ මුදල් ඉවරයි! ATM එකෙන් ගන්න.' : 'Run out of cash! Withdraw from ATM'}</span>
+                    </div>
+                  ) : cashBalance < 1000 ? (
+                    <div className="acc-alert warning">
+                      <AlertTriangle size={13} />
+                      <span>{isSi ? 'අතේ මුදල් අඩුයි! පරිස්සමෙන් වියදම් කරන්න.' : 'Low cash alert! Only essentials.'}</span>
+                    </div>
+                  ) : (
+                    <div className="acc-hint">
+                      <Clock size={13} />
+                      <span>{isSi ? `දින ~${estimatedDaysLeft} කට ප්‍රමාණවත්` : `~${estimatedDaysLeft} days runway`}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Account 2: Bank Account */}
+                <div className="account-card bank-account-card">
+                  <div className="acc-card-header">
+                    <div className="acc-card-title-group">
+                      <div className="acc-icon-badge bank-badge">🏦</div>
+                      <div>
+                        <h4 className="acc-name">{isSi ? 'බැංකු ගිණුම' : 'Bank Account'}</h4>
+                        <span className="acc-sub">{isSi ? 'Online • Cards • රිලෝඩ්' : 'Commercial, BOC, Cards & Reloads'}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBalanceEditTarget('bank');
+                        setDirectBalanceInput(String(Math.max(0, bankBalance)));
+                        setIsEditingBalance(true);
+                      }}
+                      className="btn-acc-edit"
+                      title={isSi ? 'බැංකු ශේෂය සකසන්න' : 'Set Exact Bank Balance'}
+                    >
+                      <Edit3 size={12} />
+                      <span>{isSi ? 'සකසන්න' : 'Edit'}</span>
+                    </button>
+                  </div>
+
+                  <div className="acc-card-amount">
+                    <span className="currency-mark-sub">{currency}</span>
+                    <span className="acc-amount-val bank-color">
+                      {bankBalance.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* ATM Quick Withdrawal action */}
+                  <div className="acc-actions-row">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTransferDirection('bank-to-cash');
+                        setTransferAmount('');
+                        setTransferModalOpen(true);
+                      }}
+                      className="btn-transfer-quick"
+                      title="Withdraw Cash from ATM into Wallet"
+                    >
+                      <ArrowLeftRight size={13} />
+                      <span>{isSi ? 'ATM සල්ලි ගැනීම (Bank ➔ Cash)' : 'ATM Withdrawal (Bank ➔ Cash)'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* Friend Debts / IOUs Dashboard Reminder Banner */}
@@ -1135,15 +1352,29 @@ export default function App() {
               </div>
             )}
 
-            {/* Direct Balance Edit Modal */}
+            {/* Direct Balance Edit Modal (Cash or Bank) */}
             {isEditingBalance && (
-              <div className="mini-modal-overlay">
-                <div className="mini-modal-card">
-                  <h4>{isSi ? 'දැනට ඔබ ළඟ ඇති මුදල ඇතුළත් කරන්න' : 'Set Your Exact Cash in Hand'}</h4>
+              <div className="mini-modal-overlay" onClick={() => setIsEditingBalance(false)}>
+                <div className="mini-modal-card" onClick={e => e.stopPropagation()}>
+                  <div className="modal-title-row">
+                    <div className="title-with-icon">
+                      <Edit3 size={20} className="text-accent" />
+                      <h4>
+                        {balanceEditTarget === 'bank'
+                          ? (isSi ? 'බැංකු ගිණුමේ ශේෂය ඇතුළත් කරන්න' : 'Set Your Exact Bank Account Balance')
+                          : (isSi ? 'අතේ ඇති මුදල ඇතුළත් කරන්න' : 'Set Your Exact Cash in Hand')}
+                      </h4>
+                    </div>
+                    <button onClick={() => setIsEditingBalance(false)} className="btn-modal-close">✕</button>
+                  </div>
                   <p className="modal-help">
-                    {isSi
-                      ? 'පසුම්බියේ හෝ ගිණුමේ මේ මොහොතේ ඔබ සතුව ඇති මුදල සටහන් කරන්න:'
-                      : 'Enter the exact cash amount you currently have in hand or wallet right now:'}
+                    {balanceEditTarget === 'bank'
+                      ? (isSi
+                          ? 'බැංකු ඇප් එකේ (Commercial / BOC / FriMi) මේ මොහොතේ ඇති සැබෑ මුදල සටහන් කරන්න:'
+                          : 'Enter the exact current balance shown in your Bank App right now:')
+                      : (isSi
+                          ? 'පසුම්බියේ මේ මොහොතේ ඔබ සතුව ඇති සැබෑ මුදල සටහන් කරන්න:'
+                          : 'Enter the exact physical cash amount you currently have in hand right now:')}
                   </p>
                   <form onSubmit={handleDirectBalanceSave}>
                     <div className="input-group direct-balance-input-wrap">
@@ -1176,6 +1407,78 @@ export default function App() {
               </div>
             )}
 
+            {/* ATM Transfer Modal (Bank to Cash / Deposit) */}
+            {transferModalOpen && (
+              <div className="mini-modal-overlay" onClick={() => setTransferModalOpen(false)}>
+                <div className="mini-modal-card" onClick={e => e.stopPropagation()}>
+                  <div className="modal-title-row">
+                    <div className="title-with-icon">
+                      <ArrowLeftRight size={22} className="text-accent" />
+                      <h4>
+                        {transferDirection === 'bank-to-cash'
+                          ? (isSi ? 'ATM එකෙන් මුදල් ගැනීම (Bank ➔ Cash)' : 'ATM Cash Withdrawal (Bank ➔ Cash)')
+                          : (isSi ? 'බැංකුවට මුදල් තැන්පත් කිරීම (Cash ➔ Bank)' : 'Cash Deposit (Cash ➔ Bank)')}
+                      </h4>
+                    </div>
+                    <button onClick={() => setTransferModalOpen(false)} className="btn-modal-close">✕</button>
+                  </div>
+
+                  <p className="modal-help">
+                    {transferDirection === 'bank-to-cash'
+                      ? (isSi
+                          ? 'බැංකු කාඩ්පතෙන් ATM එකෙන් මුදල් ගත් විට, බැංකු ශේෂය අඩුවී අතේ ඇති මුදල වැඩි වේ:'
+                          : 'Transfer money from your bank account into your cash-in-hand wallet:')
+                      : (isSi
+                          ? 'අතේ ඇති මුදල් බැංකුවට තැන්පත් කළ විට, අතේ මුදල අඩුවී බැංකු ශේෂය වැඩි වේ:'
+                          : 'Deposit cash into your bank account:')}
+                  </p>
+
+                  {/* Quick Amount presets */}
+                  <div className="transfer-quick-amounts">
+                    {[1000, 2000, 3000, 5000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        className="chip-quick-transfer"
+                        onClick={() => setTransferAmount(String(amt))}
+                      >
+                        {currency} {amt.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleTransferSubmit}>
+                    <div className="input-group">
+                      <span className="input-prefix">{currency}</span>
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        autoFocus
+                        placeholder="e.g. 2000, 5000..."
+                        value={transferAmount}
+                        onChange={e => setTransferAmount(e.target.value)}
+                        className="clean-input font-large"
+                      />
+                    </div>
+
+                    <div className="modal-actions-row">
+                      <button
+                        type="button"
+                        onClick={() => setTransferModalOpen(false)}
+                        className="btn-modal-cancel"
+                      >
+                        {isSi ? 'අවලංගුයි' : 'Cancel'}
+                      </button>
+                      <button type="submit" className="btn-modal-confirm">
+                        {isSi ? 'මාරු කිරීම තහවුරු කරන්න' : 'Confirm Transfer'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
             {/* 2. Fast Transaction Entry */}
             <section className="transaction-input-section">
               <div className="entry-type-selector">
@@ -1197,6 +1500,29 @@ export default function App() {
                 </button>
               </div>
 
+              {/* Account Selector Pill Toggle (Cash vs Bank) */}
+              <div className="account-selector-row">
+                <span className="acc-selector-label">{isSi ? 'ගෙවූ ආකාරය (Account):' : 'Payment Account:'}</span>
+                <div className="account-selector-pills">
+                  <button
+                    type="button"
+                    className={`acc-pill ${entryAccount === 'cash' ? 'active-cash' : ''}`}
+                    onClick={() => setEntryAccount('cash')}
+                  >
+                    <span>💵</span>
+                    <span>{isSi ? 'අතේ මුදල් (Cash in Hand)' : 'Cash in Hand'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`acc-pill ${entryAccount === 'bank' ? 'active-bank' : ''}`}
+                    onClick={() => setEntryAccount('bank')}
+                  >
+                    <span>🏦</span>
+                    <span>{isSi ? 'බැංකුවෙන් / Online (Bank)' : 'Bank / Online / Card'}</span>
+                  </button>
+                </div>
+              </div>
+
               <form onSubmit={handleSubmit} className="add-form-row">
                 <div className="input-group amount-group">
                   <span className="input-prefix">{currency}</span>
@@ -1216,7 +1542,7 @@ export default function App() {
                     type="text"
                     placeholder={
                       entryType === 'expense'
-                        ? (isSi ? 'මොනවටද? (උදා: දවල් කෑම, බස්, පොත්...)' : 'What was it for? (e.g. Lunch, Bus, Books)')
+                        ? (isSi ? 'මොනවටද? (උදා: දවල් කෑම, බස්, රිලෝඩ්...)' : 'What was it for? (e.g. Lunch, Bus, Reload)')
                         : (isSi ? 'විස්තරය (උදා: අම්මා දැම්මා, ගෙදරින් එව්වා...)' : 'Note (e.g. Sent by Parents)')
                     }
                     value={note}
@@ -1229,12 +1555,18 @@ export default function App() {
                   <div className="input-group category-group">
                     <select
                       value={category}
-                      onChange={e => setCategory(e.target.value)}
+                      onChange={e => {
+                        const newCat = e.target.value;
+                        setCategory(newCat);
+                        if (newCat === 'reload') {
+                          setEntryAccount('bank'); // Auto-switch to Bank for Mobile Reloads
+                        }
+                      }}
                       className="clean-select"
                     >
                       {Object.values(CATEGORIES).map(c => (
                         <option key={c.id} value={c.id}>
-                          {isSi ? c.nameSi : c.nameEn}
+                          {c.badge} {isSi ? c.nameSi : c.nameEn}
                         </option>
                       ))}
                     </select>
@@ -1270,9 +1602,10 @@ export default function App() {
                           key={idx}
                           type="button"
                           onClick={() => handleQuickExpense(item)}
-                          className="simple-chip"
+                          className={`simple-chip ${item.account === 'bank' ? 'chip-bank-highlight' : ''}`}
+                          title={item.account === 'bank' ? 'Paid via Bank Account' : 'Paid from Cash in Hand'}
                         >
-                          <span>{isSi ? item.labelSi : item.labelEn}</span>
+                          <span>{item.account === 'bank' ? '🏦' : ''} {isSi ? item.labelSi : item.labelEn}</span>
                           <strong className="chip-price">+{item.amount}</strong>
                         </button>
                       ))}
@@ -1280,25 +1613,27 @@ export default function App() {
                         type="button"
                         onClick={() => {
                           setLoanType('lent');
+                          setLoanPaymentSource('cash');
                           setLoanModalOpen(true);
                         }}
                         className="simple-chip chip-highlight-loan"
-                        title="I lent money to a friend"
+                        title="I paid for a friend or lent cash"
                       >
                         <ArrowUpRight size={13} />
-                        <span>{isSi ? '+ යාලුවෙකුට දුන්නා' : '+ Lent Money'}</span>
+                        <span>{isSi ? '+ 🤝 යාලුවා වෙනුවෙන් ගෙව්වා' : '+ Paid for Friend (Lent)'}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           setLoanType('borrowed');
+                          setLoanPaymentSource('direct_bill');
                           setLoanModalOpen(true);
                         }}
                         className="simple-chip chip-highlight-borrow"
-                        title="I borrowed money from a friend"
+                        title="Friend paid for me or I borrowed"
                       >
                         <ArrowDownLeft size={13} />
-                        <span>{isSi ? '+ යාලුවෙකුගෙන් ගත්තා' : '+ Borrowed Money'}</span>
+                        <span>{isSi ? '+ 📥 සල්ලි අමතක වෙලා ගත්තා' : '+ Friend Paid (Borrowed)'}</span>
                       </button>
                     </>
                   )
@@ -1306,10 +1641,10 @@ export default function App() {
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => handleQuickIncome(item)}
-                        className="simple-chip income-chip"
+                        onClick={() => handleQuickIncome(item, item.account)}
+                        className={`simple-chip income-chip ${item.account === 'bank' ? 'chip-bank-highlight' : ''}`}
                       >
-                        <span>{isSi ? item.labelSi : item.labelEn}</span>
+                        <span>{item.account === 'bank' ? '🏦' : '💵'} {isSi ? item.labelSi : item.labelEn}</span>
                         <strong className="chip-price-inc">+{item.amount}</strong>
                       </button>
                     ))}
@@ -1336,6 +1671,34 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Account Filter Pills (All Accounts vs Cash in Hand vs Bank Account) */}
+              <div className="tx-account-filter-bar">
+                <button
+                  type="button"
+                  className={`tx-acc-btn ${selectedAccountFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedAccountFilter('all')}
+                >
+                  <span>⚡ {isSi ? 'සියලු ගිණුම්' : 'All Accounts'}</span>
+                  <span className="acc-count">{transactions.length}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`tx-acc-btn acc-cash-btn ${selectedAccountFilter === 'cash' ? 'active' : ''}`}
+                  onClick={() => setSelectedAccountFilter('cash')}
+                >
+                  <span>💵 {isSi ? 'අතේ ඇති මුදල් (Cash)' : 'Cash in Hand'}</span>
+                  <span className="acc-count">{transactions.filter(t => (t.account || 'cash') === 'cash').length}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`tx-acc-btn acc-bank-btn ${selectedAccountFilter === 'bank' ? 'active' : ''}`}
+                  onClick={() => setSelectedAccountFilter('bank')}
+                >
+                  <span>🏦 {isSi ? 'බැංකුව / Online (Bank)' : 'Bank Account'}</span>
+                  <span className="acc-count">{transactions.filter(t => t.account === 'bank').length}</span>
+                </button>
+              </div>
+
               {/* Category Filter Pills (Breakfast, Lunch, Dinner, Lent, Borrowed, etc.) */}
               <div className="tx-category-filter-bar">
                 {[
@@ -1343,10 +1706,10 @@ export default function App() {
                   { id: 'breakfast', badge: '🍳', nameEn: 'Breakfast', nameSi: 'උදෑසන' },
                   { id: 'lunch', badge: '🍛', nameEn: 'Lunch', nameSi: 'දවල්' },
                   { id: 'dinner', badge: '🌙', nameEn: 'Dinner', nameSi: 'රාත්‍රී' },
+                  { id: 'reload', badge: '📱', nameEn: 'Reload (බැංකු)', nameSi: 'රිලෝඩ්' },
                   { id: 'lent', badge: '🤝', nameEn: 'Lent (දුන්නා)', nameSi: 'ණයට දුන්' },
                   { id: 'borrowed', badge: '📥', nameEn: 'Borrowed (ගත්තා)', nameSi: 'ණයට ගත්' },
                   { id: 'transport', badge: '🚌', nameEn: 'Transport', nameSi: 'ප්‍රවාහන' },
-                  { id: 'reload', badge: '📱', nameEn: 'Reload', nameSi: 'රිලෝඩ්' },
                   { id: 'food', badge: '🍔', nameEn: 'Snacks', nameSi: 'ස්නැක්ස්' },
                   { id: 'academic', badge: '📚', nameEn: 'Studies', nameSi: 'පොත්පත්' },
                   { id: 'boarding', badge: '🏠', nameEn: 'Boarding', nameSi: 'බෝඩිං' },
@@ -1374,7 +1737,7 @@ export default function App() {
 
               {filtered.length === 0 ? (
                 <div className="empty-simple">
-                  <p>{isSi ? 'මෙම කාණ්ඩයේ ගනුදෙනු කිසිවක් නැත' : 'No transactions found in this category'}</p>
+                  <p>{isSi ? 'මෙම කාණ්ඩයේ ගනුදෙනු කිසිවක් නැත' : 'No transactions found in this filter'}</p>
                 </div>
               ) : (
                 <div className="simple-tx-list">
@@ -1382,6 +1745,7 @@ export default function App() {
                     const isIncome = t.type === 'income';
                     const effCat = getEffectiveCategory(t);
                     const cat = CATEGORIES[effCat] || CATEGORIES.other;
+                    const isBankAcc = t.account === 'bank';
                     return (
                       <div key={t.id} className="simple-tx-item">
                         <div className="tx-left-col">
@@ -1405,6 +1769,9 @@ export default function App() {
                                 }}
                               >
                                 {cat.badge} {isSi ? cat.nameSi : cat.nameEn}
+                              </span>
+                              <span className={`tx-account-tag ${isBankAcc ? 'acc-bank-tag' : 'acc-cash-tag'}`}>
+                                {isBankAcc ? '🏦 Bank' : '💵 Cash'}
                               </span>
                             </div>
                             <div className="tx-item-date">{t.date}</div>
@@ -1683,14 +2050,24 @@ export default function App() {
                             <span className={`loan-amount-val ${isBorrowed ? 'purple-text' : ''}`}>
                               {currency} {Number(loan.amount).toLocaleString()}
                             </span>
-                            {loan.deductedFromWallet && (
-                              <span className="loan-wallet-tag" title="Synced with wallet cash">
-                                <Wallet size={11} />
-                                <span>
-                                  {isBorrowed
-                                    ? (isSi ? 'පසුම්බියට එකතු විය' : 'Added to Wallet')
-                                    : (isSi ? 'පසුම්බියෙන් අඩු විය' : 'Deducted from Wallet')}
-                                </span>
+                            {loan.paymentSource === 'direct_bill' ? (
+                              <span className="loan-wallet-tag tag-direct-bill" title="Friend paid bill directly (No cash added to wallet)">
+                                <Receipt size={11} />
+                                <span>{isSi ? 'බිලට යාලුවා ගෙව්වා (අතේ මුදල නොවෙයි)' : 'Direct Bill (No Cash Added)'}</span>
+                              </span>
+                            ) : loan.paymentSource === 'bank' ? (
+                              <span className="loan-wallet-tag tag-bank" title="Bank account">
+                                <Landmark size={11} />
+                                <span>{isSi ? 'බැංකුවෙන්' : 'Bank Account'}</span>
+                              </span>
+                            ) : (loan.paymentSource === 'cash' || loan.deductedFromWallet) ? (
+                              <span className="loan-wallet-tag tag-cash" title="Cash in Hand">
+                                <Banknote size={11} />
+                                <span>{isSi ? 'අතේ මුදලින්' : 'Cash in Hand'}</span>
+                              </span>
+                            ) : (
+                              <span className="loan-wallet-tag tag-neutral" title="Record only">
+                                <span>{isSi ? 'පසුම්බිය වෙනස් නොවූ' : 'Record Only'}</span>
                               </span>
                             )}
                           </div>
@@ -1901,55 +2278,161 @@ export default function App() {
                 <Users size={22} className="text-accent" />
                 <h4>
                   {loanType === 'lent'
-                    ? (isSi ? 'යාලුවෙකුට දුන් ණයක් සටහන් කිරීම' : 'Record Money Lent to Friend')
-                    : (isSi ? 'යාලුවෙකුගෙන් ගත් ණයක් සටහන් කිරීම' : 'Record Money Borrowed from Friend')}
+                    ? (isSi ? 'යාලුවෙකු වෙනුවෙන් ගෙවීම / ණයක් දීම' : 'Record Money Lent / Paid for Friend')
+                    : (isSi ? 'සල්ලි අමතක වී යාලුවා ගෙවීම / ණයක් ගැනීම' : 'Record Money Borrowed / Friend Paid for You')}
                 </h4>
               </div>
               <button onClick={() => setLoanModalOpen(false)} className="btn-modal-close">✕</button>
             </div>
 
-            {/* Mode Toggle inside Modal */}
-            <div className="modal-debt-type-toggle">
-              <button
-                type="button"
-                className={`debt-toggle-btn ${loanType === 'lent' ? 'active-lent' : ''}`}
-                onClick={() => setLoanType('lent')}
+            {/* Mode Selector Cards (Crystal Clear Choice to prevent confusion) */}
+            <div className="loan-mode-cards-grid">
+              <div
+                className={`loan-mode-big-card ${loanType === 'lent' ? 'active-mode-lent' : ''}`}
+                onClick={() => {
+                  setLoanType('lent');
+                  if (loanPaymentSource === 'direct_bill') setLoanPaymentSource('cash');
+                }}
               >
-                <ArrowUpRight size={15} />
-                <span>{isSi ? 'යාලුවෙකුට දුන්නා (Lent)' : 'I Lent to Friend'}</span>
-              </button>
-              <button
-                type="button"
-                className={`debt-toggle-btn ${loanType === 'borrowed' ? 'active-borrowed' : ''}`}
-                onClick={() => setLoanType('borrowed')}
+                <div className="mode-card-icon-title">
+                  <ArrowUpRight size={18} className="mode-icon amber" />
+                  <strong>{isSi ? 'මම යාලුවාට ගෙව්වා / දුන්නා' : 'I Paid for / Lent Friend'}</strong>
+                </div>
+                <p className="mode-card-desc">
+                  {isSi
+                    ? 'ඔබේ අතින්/බැංකුවෙන් යාලුවාට ගෙව්වා • යාලුවා ඔබට මුදල් දිය යුතුයි'
+                    : 'You paid or gave money • Friend owes you'}
+                </p>
+              </div>
+
+              <div
+                className={`loan-mode-big-card ${loanType === 'borrowed' ? 'active-mode-borrowed' : ''}`}
+                onClick={() => {
+                  setLoanType('borrowed');
+                  setLoanPaymentSource('direct_bill');
+                }}
               >
-                <ArrowDownLeft size={15} />
-                <span>{isSi ? 'යාලුවෙකුගෙන් ගත්තා (Borrowed)' : 'I Borrowed from Friend'}</span>
-              </button>
+                <div className="mode-card-icon-title">
+                  <ArrowDownLeft size={18} className="mode-icon purple" />
+                  <strong>{isSi ? 'යාලුවා මට ගෙව්වා / ගත්තා' : 'Friend Paid / Borrowed'}</strong>
+                </div>
+                <p className="mode-card-desc">
+                  {isSi
+                    ? 'සල්ලි අමතක වී යාලුවා ඔබට ගෙව්වා හෝ දුන්නා • ඔබ යාලුවාට දිය යුතුයි'
+                    : 'Friend paid for you or gave cash • You owe friend'}
+                </p>
+              </div>
             </div>
 
-            <p className="modal-help">
-              {loanType === 'lent'
-                ? (isSi
-                    ? 'කැන්ටිමට, බස් එකට හෝ පොත්වලට යාලුවෙකුට දුන් මුදල් සටහන් කරගන්න:'
-                    : 'Track who borrowed from you so you never lose track of cash owed to you:')
-                : (isSi
-                    ? 'මුදල් මදි වූ වෙලාවක යාලුවෙකුගෙන් ගත් මුදලක් මතක තබා ගැනීමට සටහන් කරන්න:'
-                    : 'Track cash you received from a friend to help you remember to pay back:')}
-            </p>
+            {/* Quick Situation Presets Bar */}
+            <div className="loan-presets-section">
+              <span className="presets-label">
+                <Sparkles size={13} className="text-accent inline-icon" />
+                {isSi ? 'ක්ෂණික තේරීම් (Quick Presets):' : 'Quick Situations:'}
+              </span>
+              <div className="loan-presets-bar">
+                {loanType === 'lent' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="loan-preset-chip"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'කැන්ටිමෙන් කෑම අරන් දුන්නා' : 'Canteen lunch for friend');
+                        setLoanPaymentSource('cash');
+                      }}
+                    >
+                      🍛 {isSi ? 'කැන්ටිමෙන් කෑම' : 'Canteen Lunch'}
+                    </button>
+                    <button
+                      type="button"
+                      className="loan-preset-chip"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'ප්‍රින්ටවුට් / කොපි ගත්තා' : 'Printout / Photocopy');
+                        setLoanPaymentSource('cash');
+                      }}
+                    >
+                      📄 {isSi ? 'ප්‍රින්ට් / කොපි' : 'Print / Copies'}
+                    </button>
+                    <button
+                      type="button"
+                      className="loan-preset-chip"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'අතට දුන් මුදල' : 'Cash lent');
+                        setLoanPaymentSource('cash');
+                      }}
+                    >
+                      💵 {isSi ? 'අතට දුන් මුදල' : 'Cash Lent'}
+                    </button>
+                    <button
+                      type="button"
+                      className="loan-preset-chip"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'බස් / ප්‍රවාහන ගාස්තු' : 'Bus fare');
+                        setLoanPaymentSource('cash');
+                      }}
+                    >
+                      🚌 {isSi ? 'බස් ගාස්තු' : 'Bus Fare'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="loan-preset-chip highlight-canteen"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'සල්ලි අමතක වෙලා කැන්ටිමට යාලුවා ගෙව්වා' : 'Forgot money - Friend paid canteen');
+                        setLoanPaymentSource('direct_bill');
+                      }}
+                    >
+                      🍛 {isSi ? 'සල්ලි අමතක වී කැන්ටිමට යාලුවා ගෙව්වා' : 'Friend paid Canteen Bill'}
+                    </button>
+                    <button
+                      type="button"
+                      className="loan-preset-chip"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'අතට මුදල් ණයට ගත්තා' : 'Cash borrowed into hand');
+                        setLoanPaymentSource('cash');
+                      }}
+                    >
+                      💵 {isSi ? 'අතට මුදල් ගත්තා' : 'Cash in Hand'}
+                    </button>
+                    <button
+                      type="button"
+                      className="loan-preset-chip"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'බස් එකට යාලුවා ගෙව්වා' : 'Bus fare paid by friend');
+                        setLoanPaymentSource('direct_bill');
+                      }}
+                    >
+                      🚌 {isSi ? 'බස් එකට දුන්නා' : 'Bus Fare'}
+                    </button>
+                    <button
+                      type="button"
+                      className="loan-preset-chip"
+                      onClick={() => {
+                        setLoanNote(isSi ? 'කඩේ බඩු වලට යාලුවා ගෙව්වා' : 'Friend paid shop/grocery bill');
+                        setLoanPaymentSource('direct_bill');
+                      }}
+                    >
+                      🛍️ {isSi ? 'බඩු/කෑම බිල' : 'Store Bill'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
 
             <form onSubmit={handleAddLoanSubmit} className="loan-form">
               <div className="form-field">
                 <label>
                   {loanType === 'lent'
-                    ? (isSi ? 'යාලුවාගේ නම (Friend Name) *' : 'Friend’s Name *')
-                    : (isSi ? 'ණයට ගත් යාලුවාගේ නම (Borrowed From) *' : 'Borrowed From (Friend’s Name) *')}
+                    ? (isSi ? 'යාලුවාගේ නම (Friend’s Name) *' : 'Friend’s Name *')
+                    : (isSi ? 'ණයට ගත් / ගෙවූ යාලුවාගේ නම (Friend’s Name) *' : 'Friend’s Name (Who Paid / Lent) *')}
                 </label>
                 <input
                   type="text"
                   required
                   autoFocus
-                  placeholder={loanType === 'lent' ? 'e.g. Kasun, Supun, Nuwan...' : 'e.g. Supun, Boarding Mate, Kasun...'}
+                  placeholder={loanType === 'lent' ? 'e.g. Kasun, Supun, Dinuka...' : 'e.g. Supun, Boarding Mate, Kasun...'}
                   value={loanFriendName}
                   onChange={e => setLoanFriendName(e.target.value)}
                   className="clean-input clean-box-input"
@@ -1959,8 +2442,8 @@ export default function App() {
               <div className="form-field">
                 <label>
                   {loanType === 'lent'
-                    ? (isSi ? 'දුන් මුදල (Amount Lent) *' : 'Amount Lent *')
-                    : (isSi ? 'ගත් මුදල (Amount Borrowed) *' : 'Amount Borrowed *')}
+                    ? (isSi ? 'දුන් / ගෙවූ මුදල (Amount Lent / Paid) *' : 'Amount Lent / Paid *')
+                    : (isSi ? 'ගත් / යාලුවා ගෙවූ මුදල (Amount Borrowed / Friend Paid) *' : 'Amount Borrowed / Friend Paid *')}
                 </label>
                 <div className="input-group">
                   <span className="input-prefix">{currency}</span>
@@ -1968,7 +2451,7 @@ export default function App() {
                     type="number"
                     step="any"
                     required
-                    placeholder="e.g. 500, 1000..."
+                    placeholder="e.g. 350, 500, 1000..."
                     value={loanAmount}
                     onChange={e => setLoanAmount(e.target.value)}
                     className="clean-input font-large"
@@ -1977,13 +2460,13 @@ export default function App() {
               </div>
 
               <div className="form-field">
-                <label>{isSi ? 'හේතුව / මොනවටද? (Reason / Note)' : 'Reason / For What (Optional)'}</label>
+                <label>{isSi ? 'හේතුව / විස්තරය (Reason / Note)' : 'Reason / Note (Optional)'}</label>
                 <input
                   type="text"
                   placeholder={
                     loanType === 'lent'
-                      ? 'e.g. Canteen lunch, Bus fare, Printout...'
-                      : 'e.g. For canteen lunch when cash ran out, room rent...'
+                      ? 'e.g. Canteen lunch, Photocopy printout, Bus fare...'
+                      : 'e.g. Canteen lunch when cash ran out, forgot wallet...'
                   }
                   value={loanNote}
                   onChange={e => setLoanNote(e.target.value)}
@@ -1991,15 +2474,107 @@ export default function App() {
                 />
               </div>
 
+              {/* Payment Source / Wallet Action Selection */}
+              <div className="loan-payment-source-box">
+                <label className="source-label">
+                  {loanType === 'lent'
+                    ? (isSi ? 'මුදල් ගෙවූ ආකාරය (Payment Account):' : 'Paid from which account?')
+                    : (isSi ? 'මුදල් ලැබුණු / ගෙවූ ආකාරය (Payment / Cash Flow):' : 'How was this payment handled?')}
+                </label>
+
+                {loanType === 'lent' ? (
+                  <div className="source-options-row">
+                    <button
+                      type="button"
+                      className={`source-radio-pill ${loanPaymentSource === 'cash' ? 'active-src' : ''}`}
+                      onClick={() => setLoanPaymentSource('cash')}
+                    >
+                      <Banknote size={15} />
+                      <div>
+                        <strong>{isSi ? '💵 අතේ ඇති මුදලින්' : '💵 Cash in Hand'}</strong>
+                        <small>{isSi ? 'අතේ ශේෂයෙන් අඩු වේ' : 'Deducts from Cash'}</small>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`source-radio-pill ${loanPaymentSource === 'bank' ? 'active-src' : ''}`}
+                      onClick={() => setLoanPaymentSource('bank')}
+                    >
+                      <Landmark size={15} />
+                      <div>
+                        <strong>{isSi ? '🏦 බැංකුවෙන් / Card' : '🏦 Bank / Card'}</strong>
+                        <small>{isSi ? 'බැංකුවෙන් අඩු වේ' : 'Deducts from Bank'}</small>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`source-radio-pill ${loanPaymentSource === 'none' ? 'active-src' : ''}`}
+                      onClick={() => setLoanPaymentSource('none')}
+                    >
+                      <div>
+                        <strong>{isSi ? '🚫 ශේෂය වෙනස් නොවේ' : '🚫 Record Only'}</strong>
+                        <small>{isSi ? 'පසුම්බිය වෙනස් නොවේ' : 'No wallet change'}</small>
+                      </div>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="source-options-row vertical-options">
+                    <button
+                      type="button"
+                      className={`source-radio-pill direct-bill-pill ${loanPaymentSource === 'direct_bill' ? 'active-src-borrowed' : ''}`}
+                      onClick={() => setLoanPaymentSource('direct_bill')}
+                    >
+                      <Receipt size={17} />
+                      <div>
+                        <strong>{isSi ? '🍛 යාලුවා කෙලින්ම බිල ගෙව්වා (Direct Bill - Recommended)' : '🍛 Friend Paid Counter Directly (Direct Bill)'}</strong>
+                        <small>
+                          {isSi
+                            ? 'සල්ලි අමතක වූ නිසා යාලුවා කෙලින්ම කැන්ටිමට/කඩේට ගෙව්වා. අතේ මුදල බොරුවට වැඩි නොවේ. යාලුවාට දිය යුතු ණය පමණක් සටහන් වේ.'
+                            : 'Friend paid the canteen/shop directly. Does NOT add fake cash to hand. Accurate debt tracked!'}
+                        </small>
+                      </div>
+                    </button>
+
+                    <div className="sub-source-grid">
+                      <button
+                        type="button"
+                        className={`source-radio-pill ${loanPaymentSource === 'cash' ? 'active-src-borrowed' : ''}`}
+                        onClick={() => setLoanPaymentSource('cash')}
+                      >
+                        <Banknote size={15} />
+                        <div>
+                          <strong>{isSi ? '💵 අතට මුදල් ගත්තා' : '💵 Cash Received'}</strong>
+                          <small>{isSi ? 'අතේ මුදලට එකතු වේ' : 'Adds to Cash in Hand'}</small>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`source-radio-pill ${loanPaymentSource === 'bank' ? 'active-src-borrowed' : ''}`}
+                        onClick={() => setLoanPaymentSource('bank')}
+                      >
+                        <Landmark size={15} />
+                        <div>
+                          <strong>{isSi ? '🏦 බැංකුවට දැම්මා' : '🏦 Bank Transfer'}</strong>
+                          <small>{isSi ? 'බැංකුවට එකතු වේ' : 'Adds to Bank'}</small>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="form-field">
                 <label>
                   {isSi
-                    ? 'යාලුවාගේ දුරකථන අංකය (WhatsApp සඳහා)'
-                    : 'Friend’s Phone Number (For WhatsApp Updates)'}
+                    ? 'යාලුවාගේ දුරකථන අංකය (WhatsApp සඳහා - විකල්ප)'
+                    : 'Friend’s Phone Number (Optional - for WhatsApp)'}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 0771234567 (Optional)"
+                  placeholder="e.g. 0771234567"
                   value={loanPhone}
                   onChange={e => setLoanPhone(e.target.value)}
                   className="clean-input clean-box-input"
@@ -2016,33 +2591,6 @@ export default function App() {
                 />
               </div>
 
-              {/* Wallet Sync Checkbox */}
-              <div className="loan-checkbox-row">
-                <label className="checkbox-custom-label">
-                  <input
-                    type="checkbox"
-                    checked={loanDeductWallet}
-                    onChange={e => setLoanDeductWallet(e.target.checked)}
-                  />
-                  <span>
-                    <strong>
-                      {loanType === 'lent'
-                        ? (isSi ? 'දැනට අතේ ඇති මුදලින් අඩු කරන්න' : 'Deduct from current Cash in Hand')
-                        : (isSi ? 'දැනට අතේ ඇති මුදලට එකතු කරන්න' : 'Add to current Cash in Hand')}
-                    </strong>
-                    <small>
-                      {loanType === 'lent'
-                        ? (isSi
-                            ? 'ඔබගේ අතින් මුදල් වැය වූ නිසා පසුම්බියේ අතේ මුදල නිවැරදිව අඩු වේ.'
-                            : 'Records an expense so your wallet balance decreases accurately.')
-                        : (isSi
-                            ? 'යාලුවාගෙන් මුදල් අතට ලැබුණු නිසා පසුම්බියේ අතේ ඇති මුදල වැඩි වේ.'
-                            : 'Records an inflow so your wallet cash increases with the borrowed money.')}
-                    </small>
-                  </span>
-                </label>
-              </div>
-
               <div className="modal-actions-row">
                 <button
                   type="button"
@@ -2056,8 +2604,8 @@ export default function App() {
                   className={`btn-modal-confirm ${loanType === 'borrowed' ? 'btn-borrow-confirm' : ''}`}
                 >
                   {loanType === 'lent'
-                    ? (isSi ? 'ණය මුදල සටහන් කරන්න' : 'Save Lent Record')
-                    : (isSi ? 'ගත් මුදල සටහන් කරන්න' : 'Save Borrowed Record')}
+                    ? (isSi ? 'සටහන් කරන්න (Owed to You)' : 'Save Record (Owed to You)')
+                    : (isSi ? 'ණය සටහන් කරන්න (You Owe Friend)' : 'Save Record (You Owe Friend)')}
                 </button>
               </div>
             </form>

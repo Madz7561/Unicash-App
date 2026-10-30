@@ -119,20 +119,20 @@ export const CATEGORIES = {
 };
 
 export const QUICK_ADD_EXPENSES = [
-  { labelEn: 'Breakfast', labelSi: 'උදෑසන ආහාරය', amount: 150, category: 'breakfast' },
-  { labelEn: 'Lunch', labelSi: 'දවල් ආහාරය', amount: 220, category: 'lunch' },
-  { labelEn: 'Dinner', labelSi: 'රාත්‍රී ආහාරය', amount: 280, category: 'dinner' },
-  { labelEn: 'Tea & Bun', labelSi: 'තේ සහ බනිස්', amount: 90, category: 'entertainment' },
-  { labelEn: 'Bus / Train', labelSi: 'බස් / කෝච්චි', amount: 70, category: 'transport' },
-  { labelEn: 'Reload', labelSi: 'ෆෝන් රිලෝඩ්', amount: 150, category: 'reload' },
-  { labelEn: 'Printout', labelSi: 'ප්‍රින්ට්අවුට්', amount: 50, category: 'academic' },
+  { labelEn: 'Breakfast', labelSi: 'උදෑසන ආහාරය', amount: 150, category: 'breakfast', account: 'cash' },
+  { labelEn: 'Lunch', labelSi: 'දවල් ආහාරය', amount: 220, category: 'lunch', account: 'cash' },
+  { labelEn: 'Dinner', labelSi: 'රාත්‍රී ආහාරය', amount: 280, category: 'dinner', account: 'cash' },
+  { labelEn: 'Bank Reload', labelSi: 'බැංකුවෙන් රිලෝඩ්', amount: 200, category: 'reload', account: 'bank' },
+  { labelEn: 'Tea & Bun', labelSi: 'තේ සහ බනිස්', amount: 90, category: 'entertainment', account: 'cash' },
+  { labelEn: 'Bus / Train', labelSi: 'බස් / කෝච්චි', amount: 70, category: 'transport', account: 'cash' },
+  { labelEn: 'Printout', labelSi: 'ප්‍රින්ට්අවුට්', amount: 50, category: 'academic', account: 'cash' },
 ];
 
 export const QUICK_ADD_INCOME = [
-  { labelEn: 'From Home', labelSi: 'ගෙදරින් එව්වා', amount: 2000 },
-  { labelEn: 'From Home', labelSi: 'ගෙදරින් එව්වා', amount: 3000 },
-  { labelEn: 'From Home', labelSi: 'ගෙදරින් එව්වා', amount: 5000 },
-  { labelEn: 'From Home', labelSi: 'ගෙදරින් එව්වා', amount: 10000 },
+  { labelEn: 'Cash from Home', labelSi: 'ගෙදරින් අතේ මුදල්', amount: 2000, account: 'cash' },
+  { labelEn: 'Bank Transfer (Home)', labelSi: 'ගෙදරින් Bank එකට දැම්මා', amount: 5000, account: 'bank' },
+  { labelEn: 'Bank Transfer (Home)', labelSi: 'ගෙදරින් Bank එකට දැම්මා', amount: 10000, account: 'bank' },
+  { labelEn: 'Cash in Hand', labelSi: 'අතට ලැබුණු මුදල්', amount: 3000, account: 'cash' },
 ];
 
 export const INITIAL_SETTINGS = {
