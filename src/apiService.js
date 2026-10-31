@@ -80,6 +80,7 @@ export async function loginApi(username, password) {
         transactions: [],
         settings: { currency: 'Rs.', language: 'en', darkMode: true },
         loans: [],
+        notes: [],
         lastUpdated: Date.now(),
       };
       if (dataRes.ok) {
@@ -87,6 +88,7 @@ export async function loginApi(username, password) {
         if (fetched) userData = fetched;
       }
       if (!userData.loans) userData.loans = [];
+      if (!userData.notes) userData.notes = [];
 
       return {
         success: true,
@@ -158,6 +160,7 @@ export async function registerApi({ username, password, name, avatar, initialBal
         transactions: initialTransactions,
         settings: { currency: 'Rs.', language: 'en', darkMode: true },
         loans: [],
+        notes: [],
         lastUpdated: Date.now(),
       };
 

@@ -55,6 +55,12 @@ import {
   CreditCard,
   ArrowLeftRight,
   Banknote,
+  StickyNote,
+  Pin,
+  Bell,
+  FileText,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import './App.css';
 
@@ -89,6 +95,19 @@ export default function App() {
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
   const [transactions, setTransactions] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [notes, setNotes] = useState([]);
+
+  // Notes & Reminders State
+  const [noteFormOpen, setNoteFormOpen] = useState(false);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteTag, setNoteTag] = useState('debt'); // 'debt' | 'reminder' | 'expense' | 'general'
+  const [noteColor, setNoteColor] = useState('amber'); // 'amber' | 'emerald' | 'purple' | 'blue' | 'rose' | 'slate'
+  const [noteDueDate, setNoteDueDate] = useState('');
+  const [noteIsPinned, setNoteIsPinned] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [noteFilter, setNoteFilter] = useState('all'); // 'all' | 'active' | 'debt' | 'reminder' | 'done'
+  const [noteSearch, setNoteSearch] = useState('');
 
   // Active navigation tab: 'wallet' | 'loans' | 'analytics' | 'settings'
   const [activeTab, setActiveTab] = useState('wallet');
@@ -181,6 +200,7 @@ export default function App() {
           setTransactions(data.transactions || []);
           setSettings(data.settings || INITIAL_SETTINGS);
           setLoans(data.loans || []);
+          setNotes(data.notes || []);
           lastUpdatedRef.current = data.lastUpdated || Date.now();
           setSyncStatus('synced');
         } else {
@@ -203,6 +223,7 @@ export default function App() {
           setTransactions(data.transactions || []);
           if (data.settings) setSettings(data.settings);
           if (data.loans) setLoans(data.loans);
+          if (data.notes) setNotes(data.notes);
           setSyncStatus('synced');
         }
       } catch {
@@ -214,7 +235,7 @@ export default function App() {
   }, [currentUser?.id]);
 
   // Save current user data to Firebase Cloud Database
-  const saveUserData = async (newTx, newStg, newLoans) => {
+  const saveUserData = async (newTx, newStg, newLoans, newNotes) => {
     if (!currentUser) return;
     try {
       setSyncStatus('syncing');
@@ -222,12 +243,14 @@ export default function App() {
       const txToSave = newTx !== undefined ? newTx : transactions;
       const stgToSave = newStg !== undefined ? newStg : settings;
       const loansToSave = newLoans !== undefined ? newLoans : loans;
+      const notesToSave = newNotes !== undefined ? newNotes : notes;
 
       const payload = {
         id: currentUser.id,
         transactions: txToSave,
         settings: stgToSave,
         loans: loansToSave,
+        notes: notesToSave,
         lastUpdated: Date.now(),
       };
       lastUpdatedRef.current = payload.lastUpdated;
@@ -255,6 +278,7 @@ export default function App() {
         setTransactions(data.data.transactions || []);
         setSettings(data.data.settings || INITIAL_SETTINGS);
         setLoans(data.data.loans || []);
+        setNotes(data.data.notes || []);
         lastUpdatedRef.current = data.data.lastUpdated || Date.now();
         setAuthUsername('');
         setAuthPassword('');
@@ -299,6 +323,7 @@ export default function App() {
         setTransactions(data.data.transactions || []);
         setSettings(data.data.settings || INITIAL_SETTINGS);
         setLoans(data.data.loans || []);
+        setNotes(data.data.notes || []);
         lastUpdatedRef.current = data.data.lastUpdated || Date.now();
         setAuthUsername('');
         setAuthPassword('');
@@ -404,6 +429,33 @@ export default function App() {
   // 3. Net Balance & Open Debts Count
   const netFriendBalance = totalPendingLent - totalPendingBorrowed;
   const totalPendingDebtsCount = pendingLent.length + pendingBorrowed.length;
+
+  // ================= CAMPUS NOTES & REMINDERS CALCULATIONS =================
+  const activeNotesCount = notes.filter(n => !n.isCompleted).length;
+  const friendMemosCount = notes.filter(n => n.tag === 'debt' && !n.isCompleted).length;
+  const remindersCount = notes.filter(n => n.tag === 'reminder' && !n.isCompleted).length;
+
+  const filteredNotes = notes.filter(n => {
+    if (noteFilter === 'active' && n.isCompleted) return false;
+    if (noteFilter === 'done' && !n.isCompleted) return false;
+    if (noteFilter === 'debt' && n.tag !== 'debt') return false;
+    if (noteFilter === 'reminder' && n.tag !== 'reminder') return false;
+    if (noteFilter === 'expense' && n.tag !== 'expense') return false;
+
+    if (noteSearch.trim()) {
+      const q = noteSearch.trim().toLowerCase();
+      const matchTitle = (n.title || '').toLowerCase().includes(q);
+      const matchContent = (n.content || '').toLowerCase().includes(q);
+      return matchTitle || matchContent;
+    }
+    return true;
+  }).sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    if (!a.isCompleted && b.isCompleted) return -1;
+    if (a.isCompleted && !b.isCompleted) return 1;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
 
   // Add regular transaction (Expense or Income)
   const handleSubmit = (e) => {
@@ -753,6 +805,107 @@ export default function App() {
     }
   };
 
+  // ================= NOTES & REMINDERS HANDLERS =================
+  const handleSaveNote = (e) => {
+    e.preventDefault();
+    if (!noteContent.trim() && !noteTitle.trim()) return;
+
+    if (editingNoteId) {
+      const updatedNotes = notes.map(n => n.id === editingNoteId ? {
+        ...n,
+        title: noteTitle.trim(),
+        content: noteContent.trim(),
+        tag: noteTag,
+        color: noteColor,
+        dueDate: noteDueDate,
+        isPinned: noteIsPinned,
+        updatedAt: Date.now(),
+      } : n);
+      setNotes(updatedNotes);
+      saveUserData(transactions, settings, loans, updatedNotes);
+      showToast(isSi ? 'සටහන යාවත්කාලීන විය' : 'Note updated');
+    } else {
+      const newNote = {
+        id: 'note-' + Date.now(),
+        title: noteTitle.trim(),
+        content: noteContent.trim(),
+        tag: noteTag,
+        color: noteColor,
+        dueDate: noteDueDate,
+        isPinned: noteIsPinned,
+        isCompleted: false,
+        createdAt: Date.now(),
+      };
+      const updatedNotes = [newNote, ...notes];
+      setNotes(updatedNotes);
+      saveUserData(transactions, settings, loans, updatedNotes);
+      showToast(isSi ? 'නව සටහනක් එකතු විය' : 'Note saved successfully');
+    }
+
+    setNoteTitle('');
+    setNoteContent('');
+    setNoteTag('debt');
+    setNoteColor('amber');
+    setNoteDueDate('');
+    setNoteIsPinned(false);
+    setEditingNoteId(null);
+    setNoteFormOpen(false);
+  };
+
+  const handleToggleNoteComplete = (noteId) => {
+    const target = notes.find(n => n.id === noteId);
+    if (!target) return;
+    const nextStatus = !target.isCompleted;
+
+    const updatedNotes = notes.map(n => {
+      if (n.id === noteId) {
+        return {
+          ...n,
+          isCompleted: nextStatus,
+          completedAt: nextStatus ? Date.now() : null,
+        };
+      }
+      return n;
+    });
+    setNotes(updatedNotes);
+    saveUserData(transactions, settings, loans, updatedNotes);
+    showToast(nextStatus 
+      ? (isSi ? 'සටහන විසඳා අවසන් ලෙස ලකුණු විය ✓' : 'Marked as completed ✓')
+      : (isSi ? 'සටහන නැවත සක්‍රීය කරන ලදී' : 'Note reopened'));
+  };
+
+  const handleToggleNotePin = (noteId) => {
+    const updatedNotes = notes.map(n => n.id === noteId ? { ...n, isPinned: !n.isPinned } : n);
+    setNotes(updatedNotes);
+    saveUserData(transactions, settings, loans, updatedNotes);
+  };
+
+  const handleStartEditNote = (noteItem) => {
+    setEditingNoteId(noteItem.id);
+    setNoteTitle(noteItem.title || '');
+    setNoteContent(noteItem.content || '');
+    setNoteTag(noteItem.tag || 'debt');
+    setNoteColor(noteItem.color || 'amber');
+    setNoteDueDate(noteItem.dueDate || '');
+    setNoteIsPinned(!!noteItem.isPinned);
+    setNoteFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteNote = (noteId) => {
+    if (!confirm(isSi ? 'මෙම සටහන මකා දැමීමට සහතිකද?' : 'Are you sure you want to delete this note?')) return;
+    const updatedNotes = notes.filter(n => n.id !== noteId);
+    setNotes(updatedNotes);
+    saveUserData(transactions, settings, loans, updatedNotes);
+    showToast(isSi ? 'සටහන ඉවත් කරන ලදී' : 'Note deleted');
+  };
+
+  const handleCopyNote = (noteItem) => {
+    const fullText = (noteItem.title ? `📌 ${noteItem.title}\n` : '') + noteItem.content;
+    navigator.clipboard.writeText(fullText);
+    showToast(isSi ? 'සටහන Clipboard එකට Copy විය ✓' : 'Copied note text ✓');
+  };
+
   const handleExportCSV = () => {
     const rows = [
       ['Date', 'Type', 'Category', 'Amount', 'Note'],
@@ -769,7 +922,7 @@ export default function App() {
   };
 
   const handleExportJSON = () => {
-    const data = { user: currentUser, settings, transactions, loans };
+    const data = { user: currentUser, settings, transactions, loans, notes };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1152,9 +1305,19 @@ export default function App() {
               className={`tab-btn ${activeTab === 'loans' ? 'active' : ''}`}
             >
               <Users size={16} />
-              <span>{isSi ? 'ණය' : 'Debts & IOUs'}</span>
+              <span>{isSi ? 'ණය' : 'Debts'}</span>
               {totalPendingDebtsCount > 0 && (
                 <span className="tab-counter-badge">{totalPendingDebtsCount}</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
+            >
+              <StickyNote size={16} />
+              <span>{isSi ? 'සටහන්' : 'Notes'}</span>
+              {activeNotesCount > 0 && (
+                <span className="tab-counter-badge notes-badge">{activeNotesCount}</span>
               )}
             </button>
             <button
@@ -2128,6 +2291,450 @@ export default function App() {
           </main>
         )}
 
+        {/* ================= TAB 3: CAMPUS NOTES & REMINDERS ================= */}
+        {activeTab === 'notes' && (
+          <main className="tab-content">
+            <div className="notes-dashboard">
+              {/* Header card with action */}
+              <div className="notes-header-card">
+                <div>
+                  <h3 className="notes-main-title">
+                    <StickyNote size={22} className="text-accent" />
+                    <span>{isSi ? 'සටහන් සහ මතක්කිරීම් (Campus Notes)' : 'Campus Notes & Reminders'}</span>
+                  </h3>
+                  <p className="notes-subtitle">
+                    {isSi
+                      ? 'යාලුවන්ට දුන්/ගත් ණය වෙනත් ක්‍රමවලින් බේරූ හැටි, මතක්කිරීම් සහ කැම්පස් සටහන් මෙතැනින් තබාගන්න'
+                      : 'Keep memos for non-cash debt settlements, payback reminders, and student notes'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setEditingNoteId(null);
+                    setNoteTitle('');
+                    setNoteContent('');
+                    setNoteTag('debt');
+                    setNoteColor('amber');
+                    setNoteDueDate('');
+                    setNoteIsPinned(false);
+                    setNoteFormOpen(prev => !prev);
+                  }}
+                  className="btn-add-note-primary"
+                >
+                  <Plus size={16} />
+                  <span>{isSi ? '+ අලුත් සටහනක්' : '+ New Memo'}</span>
+                </button>
+              </div>
+
+              {/* Stats Bar */}
+              <div className="notes-stats-bar">
+                <div className="note-stat-item">
+                  <span className="note-stat-num">{notes.length}</span>
+                  <span className="note-stat-lbl">{isSi ? 'සියලු සටහන්' : 'Total Notes'}</span>
+                </div>
+                <div className="note-stat-item highlight-active">
+                  <span className="note-stat-num">{activeNotesCount}</span>
+                  <span className="note-stat-lbl">{isSi ? 'ක්‍රියාකාරී' : 'Pending'}</span>
+                </div>
+                <div className="note-stat-item highlight-debt">
+                  <span className="note-stat-num">{friendMemosCount}</span>
+                  <span className="note-stat-lbl">{isSi ? 'ණය Memos' : 'Friend Debts'}</span>
+                </div>
+                <div className="note-stat-item highlight-done">
+                  <span className="note-stat-num">{notes.filter(n => n.isCompleted).length}</span>
+                  <span className="note-stat-lbl">{isSi ? 'විසඳා අවසන්' : 'Completed'}</span>
+                </div>
+              </div>
+
+              {/* Quick Template Presets */}
+              <div className="notes-quick-presets">
+                <span className="presets-caption">
+                  <Sparkles size={12} className="text-accent inline-icon" />
+                  {isSi ? 'ක්ෂණික සැකිලි (Quick Templates):' : 'Quick Templates:'}
+                </span>
+                <div className="presets-pills-wrap">
+                  <button
+                    type="button"
+                    className="note-preset-chip"
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteTitle(isSi ? 'යාලුවාගේ ණය වෙනත් ආකාරයකින් බේරීම' : 'Settled Friend Debt (Alternative)');
+                      setNoteContent(isSi ? 'මම යාලුවාට දිය යුතු මුදල වෙනත් ක්‍රමයකින් (කැන්ටිමෙන් කෑම අරන් දී / බඩු / ප්‍රින්ට් කර දී) බේරා අවසන් කළා.' : 'Settled debt with friend by covering lunch/items instead of cash.');
+                      setNoteTag('debt');
+                      setNoteColor('amber');
+                      setNoteFormOpen(true);
+                    }}
+                  >
+                    🤝 {isSi ? 'ණය වෙනත් ක්‍රමයකින් බේරීම' : 'Settled via Lunch/Items'}
+                  </button>
+                  <button
+                    type="button"
+                    className="note-preset-chip"
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteTitle(isSi ? 'යාලුවාට සල්ලි දීමට මතක් කිරීම' : 'Reminder: Pay friend back');
+                      setNoteContent(isSi ? 'යාලුවාට සල්ලි දෙන්න තියෙනවා. ගෙදරින් සල්ලි ආවම හෝ සතිය අන්තයේදී Bank Transfer එකක් දාන්න.' : 'Need to pay friend back when home sends money or via bank transfer.');
+                      setNoteTag('debt');
+                      setNoteColor('purple');
+                      setNoteFormOpen(true);
+                    }}
+                  >
+                    ⏰ {isSi ? 'යාලුවාට සල්ලි දීම' : 'Payback Reminder'}
+                  </button>
+                  <button
+                    type="button"
+                    className="note-preset-chip"
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteTitle(isSi ? 'බෝඩිං කුලී / Utility බිල්පත්' : 'Boarding Rent / Utility Bill');
+                      setNoteContent(isSi ? 'මෙම මස බෝඩිං ගාස්තු හෝ විදුලි බිල ගෙවීමට මුදල් වෙන්කර තබන්න.' : 'Keep money aside for room rent / utility bills.');
+                      setNoteTag('reminder');
+                      setNoteColor('blue');
+                      setNoteFormOpen(true);
+                    }}
+                  >
+                    🏠 {isSi ? 'බෝඩිං ගාස්තු / බිල්පත්' : 'Boarding Rent'}
+                  </button>
+                  <button
+                    type="button"
+                    className="note-preset-chip"
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteTitle(isSi ? 'කැම්පස් පොත් / ප්‍රින්ටවුට් වියදම්' : 'Campus Prints & Books');
+                      setNoteContent(isSi ? 'ප්‍රායෝගික පරීක්ෂණ / Assignment ප්‍රින්ට් අවුට් සඳහා මුදල්.' : 'Cash reserved for lab sheets and assignments printouts.');
+                      setNoteTag('expense');
+                      setNoteColor('emerald');
+                      setNoteFormOpen(true);
+                    }}
+                  >
+                    📄 {isSi ? 'ප්‍රින්ටවුට් / පොත්පත්' : 'Prints & Books'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Note Creator / Editor Card (Collapsible) */}
+              {noteFormOpen && (
+                <div className="note-editor-card">
+                  <div className="note-editor-header">
+                    <h4>
+                      {editingNoteId 
+                        ? (isSi ? '✏️ සටහන සංස්කරණය කරන්න' : '✏️ Edit Note')
+                        : (isSi ? '📝 නව සටහනක් ලියන්න' : '📝 Create New Note')}
+                    </h4>
+                    <button onClick={() => setNoteFormOpen(false)} className="btn-modal-close">✕</button>
+                  </div>
+
+                  <form onSubmit={handleSaveNote} className="note-form">
+                    <div className="form-field">
+                      <label>{isSi ? 'මාතෘකාව / මාතෘකා නම (Optional):' : 'Title / Topic (Optional):'}</label>
+                      <input
+                        type="text"
+                        placeholder={isSi ? 'e.g. කසුන්ගේ ණය, බෝඩිං බිල, ප්‍රින්ටවුට්...' : 'e.g. Kasun Debt, Room Rent, Printouts...'}
+                        value={noteTitle}
+                        onChange={e => setNoteTitle(e.target.value)}
+                        className="clean-input clean-box-input"
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <label>{isSi ? 'සටහන / මතක්කිරීම (Note Details) *:' : 'Note Details *:'}</label>
+                      <textarea
+                        required
+                        rows={3}
+                        placeholder={isSi ? 'ඔබට මතක තබා ගැනීමට අවශ්‍ය දේ මෙතන ලියන්න...' : 'Write your note or reminder here...'}
+                        value={noteContent}
+                        onChange={e => setNoteContent(e.target.value)}
+                        className="clean-input clean-box-input note-textarea"
+                      />
+                    </div>
+
+                    {/* Tag + Color Selector Row */}
+                    <div className="note-selectors-row">
+                      {/* Tag Selector */}
+                      <div className="form-field">
+                        <label>{isSi ? 'වර්ගය (Tag):' : 'Tag / Category:'}</label>
+                        <div className="note-tag-pills">
+                          <button
+                            type="button"
+                            className={`tag-pill-btn ${noteTag === 'debt' ? 'active-tag-debt' : ''}`}
+                            onClick={() => setNoteTag('debt')}
+                          >
+                            🤝 {isSi ? 'යාලුවා / ණය' : 'Friend / Debt'}
+                          </button>
+                          <button
+                            type="button"
+                            className={`tag-pill-btn ${noteTag === 'reminder' ? 'active-tag-reminder' : ''}`}
+                            onClick={() => setNoteTag('reminder')}
+                          >
+                            ⏰ {isSi ? 'මතක්කිරීම්' : 'Reminder'}
+                          </button>
+                          <button
+                            type="button"
+                            className={`tag-pill-btn ${noteTag === 'expense' ? 'active-tag-expense' : ''}`}
+                            onClick={() => setNoteTag('expense')}
+                          >
+                            💰 {isSi ? 'වියදම්' : 'Expense'}
+                          </button>
+                          <button
+                            type="button"
+                            className={`tag-pill-btn ${noteTag === 'general' ? 'active-tag-general' : ''}`}
+                            onClick={() => setNoteTag('general')}
+                          >
+                            💡 {isSi ? 'සාමාන්‍ය' : 'General'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sticky Color Selector */}
+                      <div className="form-field">
+                        <label>{isSi ? 'වර්ණය (Card Color):' : 'Color Theme:'}</label>
+                        <div className="note-color-dots">
+                          {[
+                            { id: 'amber', label: 'Yellow' },
+                            { id: 'emerald', label: 'Green' },
+                            { id: 'purple', label: 'Purple' },
+                            { id: 'blue', label: 'Blue' },
+                            { id: 'rose', label: 'Pink' },
+                            { id: 'slate', label: 'Slate' },
+                          ].map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className={`color-dot-btn dot-${c.id} ${noteColor === c.id ? 'active-dot' : ''}`}
+                              onClick={() => setNoteColor(c.id)}
+                              title={c.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Due Date & Pin Row */}
+                    <div className="note-options-row">
+                      <div className="form-field">
+                        <label>{isSi ? 'මතක්කිරීමේ දිනය (Optional Reminder Date):' : 'Reminder Due Date:'}</label>
+                        <input
+                          type="date"
+                          value={noteDueDate}
+                          onChange={e => setNoteDueDate(e.target.value)}
+                          className="clean-input clean-box-input"
+                        />
+                      </div>
+
+                      <div className="note-pin-toggle-wrap">
+                        <label className="checkbox-custom-label pin-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={noteIsPinned}
+                            onChange={e => setNoteIsPinned(e.target.checked)}
+                          />
+                          <span>
+                            <strong>📌 {isSi ? 'උඩින්ම තබන්න (Pin to Top)' : 'Pin to Top'}</strong>
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="note-editor-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNoteFormOpen(false);
+                          setEditingNoteId(null);
+                        }}
+                        className="btn-modal-cancel"
+                      >
+                        {isSi ? 'අවලංගුයි' : 'Cancel'}
+                      </button>
+                      <button type="submit" className="btn-modal-confirm">
+                        {editingNoteId 
+                          ? (isSi ? 'යාවත්කාලීන කරන්න' : 'Update Note')
+                          : (isSi ? 'සටහන සුරකින්න' : 'Save Note')}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Toolbar: Search & Filter Chips */}
+              <div className="notes-toolbar">
+                <div className="search-bar-wrap">
+                  <Search size={15} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder={isSi ? 'සටහන් සොයන්න (Search notes)...' : 'Search notes & memos...'}
+                    value={noteSearch}
+                    onChange={e => setNoteSearch(e.target.value)}
+                    className="clean-input search-input"
+                  />
+                  {noteSearch && (
+                    <button onClick={() => setNoteSearch('')} className="btn-clear-search">✕</button>
+                  )}
+                </div>
+
+                <div className="notes-filter-chips">
+                  <button
+                    onClick={() => setNoteFilter('all')}
+                    className={`note-filter-pill ${noteFilter === 'all' ? 'active' : ''}`}
+                  >
+                    {isSi ? 'සියල්ල' : 'All'} ({notes.length})
+                  </button>
+                  <button
+                    onClick={() => setNoteFilter('active')}
+                    className={`note-filter-pill ${noteFilter === 'active' ? 'active' : ''}`}
+                  >
+                    ⏳ {isSi ? 'ක්‍රියාකාරී' : 'Active'} ({activeNotesCount})
+                  </button>
+                  <button
+                    onClick={() => setNoteFilter('debt')}
+                    className={`note-filter-pill ${noteFilter === 'debt' ? 'active' : ''}`}
+                  >
+                    🤝 {isSi ? 'ණය Memos' : 'Debts'} ({friendMemosCount})
+                  </button>
+                  <button
+                    onClick={() => setNoteFilter('reminder')}
+                    className={`note-filter-pill ${noteFilter === 'reminder' ? 'active' : ''}`}
+                  >
+                    ⏰ {isSi ? 'මතක්කිරීම්' : 'Reminders'} ({remindersCount})
+                  </button>
+                  <button
+                    onClick={() => setNoteFilter('done')}
+                    className={`note-filter-pill ${noteFilter === 'done' ? 'active' : ''}`}
+                  >
+                    ✓ {isSi ? 'විසඳූ' : 'Done'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Notes Grid Display */}
+              {filteredNotes.length === 0 ? (
+                <div className="notes-empty-card">
+                  <StickyNote size={40} className="empty-notes-icon" />
+                  <h4>{isSi ? 'සටහන් කිසිවක් නැත' : 'No Notes Found'}</h4>
+                  <p>
+                    {isSi
+                      ? 'යාලුවාට සල්ලි දුන් හැටි, ණය බේරූ හැටි හෝ මතක්කිරීම් සටහන් කර තබා ගැනීමට ඉහත "+ අලුත් සටහනක්" ඔබන්න.'
+                      : 'Record when you settle friend debts in other ways, set payback reminders, or keep campus memos!'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteTitle('');
+                      setNoteContent('');
+                      setNoteTag('debt');
+                      setNoteColor('amber');
+                      setNoteFormOpen(true);
+                    }}
+                    className="btn-add-note-primary"
+                  >
+                    <Plus size={15} />
+                    <span>{isSi ? '+ පළමු සටහන ලියන්න' : '+ Write First Note'}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="notes-grid">
+                  {filteredNotes.map(noteItem => {
+                    return (
+                      <div
+                        key={noteItem.id}
+                        className={`sticky-note-card theme-${noteItem.color || 'amber'} ${noteItem.isCompleted ? 'note-completed' : ''} ${noteItem.isPinned ? 'note-pinned' : ''}`}
+                      >
+                        {/* Top Card Bar: Pin, Tag & Quick Actions */}
+                        <div className="note-card-top">
+                          <div className="note-badges-left">
+                            {noteItem.isPinned && (
+                              <span className="note-pinned-tag" title="Pinned to top">
+                                <Pin size={11} />
+                                <span>{isSi ? 'Pinned' : 'Pinned'}</span>
+                              </span>
+                            )}
+                            <span className={`note-tag-badge tag-${noteItem.tag || 'general'}`}>
+                              {noteItem.tag === 'debt'
+                                ? `🤝 ${isSi ? 'ණය Memo' : 'Debt Memo'}`
+                                : noteItem.tag === 'reminder'
+                                ? `⏰ ${isSi ? 'මතක්කිරීමක්' : 'Reminder'}`
+                                : noteItem.tag === 'expense'
+                                ? `💰 ${isSi ? 'වියදම්' : 'Expense'}`
+                                : `💡 ${isSi ? 'සටහනක්' : 'General'}`}
+                            </span>
+                          </div>
+
+                          <div className="note-card-actions-quick">
+                            <button
+                              onClick={() => handleToggleNotePin(noteItem.id)}
+                              className={`btn-note-icon-action ${noteItem.isPinned ? 'pinned-active' : ''}`}
+                              title={noteItem.isPinned ? 'Unpin' : 'Pin to top'}
+                            >
+                              <Pin size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleCopyNote(noteItem)}
+                              className="btn-note-icon-action"
+                              title="Copy to clipboard"
+                            >
+                              <Copy size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Title (if any) */}
+                        {noteItem.title && (
+                          <h4 className="note-card-title">{noteItem.title}</h4>
+                        )}
+
+                        {/* Content */}
+                        <p className="note-card-content">{noteItem.content}</p>
+
+                        {/* Due Date Indicator (if set) */}
+                        {noteItem.dueDate && (
+                          <div className="note-due-info">
+                            <Clock size={12} />
+                            <span>{isSi ? 'මතක්කිරීම:' : 'Reminder:'} {noteItem.dueDate}</span>
+                          </div>
+                        )}
+
+                        {/* Bottom Actions Row: Settle / Toggle Checkbox, Edit, Delete */}
+                        <div className="note-card-footer">
+                          <button
+                            onClick={() => handleToggleNoteComplete(noteItem.id)}
+                            className={`btn-note-check ${noteItem.isCompleted ? 'is-checked' : ''}`}
+                          >
+                            <CheckCircle2 size={15} />
+                            <span>
+                              {noteItem.isCompleted
+                                ? (isSi ? '✓ විසඳා අවසන්' : '✓ Completed')
+                                : (isSi ? 'විසඳා අවසන් කරන්න' : 'Mark as Done')}
+                            </span>
+                          </button>
+
+                          <div className="note-footer-right">
+                            <button
+                              onClick={() => handleStartEditNote(noteItem)}
+                              className="btn-note-edit-mini"
+                              title="Edit note"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteNote(noteItem.id)}
+                              className="btn-note-delete-mini"
+                              title="Delete note"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </main>
+        )}
+
         {/* ================= TAB 3: ANALYTICS ================= */}
         {activeTab === 'analytics' && (
           <main className="tab-content">
@@ -2246,7 +2853,8 @@ export default function App() {
                       if (confirm(isSi ? 'මෙම ගිණුමේ සියලුම දත්ත මකා දැමීමට සහතිකද?' : 'Are you sure you want to clear your data?')) {
                         setTransactions([]);
                         setLoans([]);
-                        saveUserData([], settings, []);
+                        setNotes([]);
+                        saveUserData([], settings, [], []);
                       }
                     }}
                     className="btn-action-danger"
