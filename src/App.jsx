@@ -62,6 +62,7 @@ import {
   CheckSquare,
   Square,
 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import './App.css';
 
 const AVATARS = ['🎓', '⚡', '🎒', '☕', '🚀', '💡', '🦁', '🌸', '💻', '🎧'];
@@ -1744,7 +1745,7 @@ export default function App() {
                   <span>
                     {entryType === 'expense'
                       ? (isSi ? 'වියදම සටහන් කරන්න' : 'Add Expense')
-                      : (isSi ? 'මුදල් එකතු කරන්න' : 'Add Cash')}
+                      : (isSi ? 'මුදල් එකතු කරන���න' : 'Add Cash')}
                   </span>
                 </button>
               </form>
@@ -2130,7 +2131,7 @@ export default function App() {
                   <h4>{isSi ? 'ණය සටහන් කිසිවක් නැත' : 'No Debt Records Found'}</h4>
                   <p>
                     {isSi
-                      ? 'යාලුවෙකුට මුදලක් දුන් විට හෝ යාලුවෙකුගෙන් මුදලක් ණයට ගත් විට පහත බොත්තම් වලින් සටහන් කරගන්න.'
+                      ? 'යාලුවෙකුට මුදලක් දුන් විට හෝ යාලුවෙකුගෙන් මු���ලක් ණයට ගත් විට පහත ��ොත්තම් වලින් සටහන් කරගන්න.'
                       : 'Record when you lend cash to a friend, or when you borrow from a friend for canteen meals or rent!'}
                   </p>
                   <div className="empty-card-actions">
@@ -3255,6 +3256,9 @@ export default function App() {
           <span>{toastMsg}</span>
         </div>
       )}
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
 
     </div>
   );
