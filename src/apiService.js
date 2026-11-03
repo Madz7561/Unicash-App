@@ -81,6 +81,8 @@ export async function loginApi(username, password) {
         settings: { currency: 'Rs.', language: 'en', darkMode: true },
         loans: [],
         notes: [],
+        friends: [],
+        friends: [],
         lastUpdated: Date.now(),
       };
       if (dataRes.ok) {
@@ -89,6 +91,7 @@ export async function loginApi(username, password) {
       }
       if (!userData.loans) userData.loans = [];
       if (!userData.notes) userData.notes = [];
+      if (!userData.friends) userData.friends = [];
 
       return {
         success: true,
@@ -161,6 +164,7 @@ export async function registerApi({ username, password, name, avatar, initialBal
         settings: { currency: 'Rs.', language: 'en', darkMode: true },
         loans: [],
         notes: [],
+        friends: [],
         lastUpdated: Date.now(),
       };
 
@@ -267,4 +271,76 @@ export async function saveUserDataApi(payload) {
     } catch {}
   }
   return false;
+}
+
+// 7. Search registered users in Firebase by username or name
+export async function searchUsersApi(query, currentUserId) {
+  try {
+    const users = await getFirebaseUsers();
+    if (!users) return [];
+    const q = String(query || '').trim().toLowerCase().replace(/^@/, '');
+    return users
+      .filter(u => u && u.id && u.id !== currentUserId)
+      .filter(u => {
+        if (!q) return true;
+        const un = String(u.username || '').toLowerCase().replace(/^@/, '');
+        const nm = String(u.name || '').toLowerCase();
+        return un.includes(q) || nm.includes(q);
+      })
+      .map(u => ({
+        id: u.id,
+        username: u.username,
+        name: u.name || u.username,
+        avatar: u.avatar || '🎓',
+      }));
+  } catch (err) {
+    console.warn('Search users error:', err);
+    return [];
+  }
+}
+
+// 8. Create a 2-way shared debt request
+export async function createDebtRequestApi(request) {
+  try {
+    const res = await fetch(`${FIREBASE_BASE_URL}/debtRequests/${request.id}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Create debt request error:', err);
+    return false;
+  }
+}
+
+// 9. Fetch debt requests relevant to a user (as target or creator)
+export async function fetchUserDebtRequestsApi(userId) {
+  try {
+    const res = await fetch(`${FIREBASE_BASE_URL}/debtRequests.json`);
+    if (res.ok) {
+      const data = await safeJson(res);
+      if (!data) return [];
+      const list = Object.values(data).filter(Boolean);
+      return list.filter(r => r.targetId === userId || r.creatorId === userId);
+    }
+  } catch (err) {
+    console.warn('Fetch debt requests error:', err);
+  }
+  return [];
+}
+
+// 10. Update a debt request status (confirm, decline, settle)
+export async function updateDebtRequestApi(requestId, updateData) {
+  try {
+    const res = await fetch(`${FIREBASE_BASE_URL}/debtRequests/${requestId}.json`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateData),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Update debt request error:', err);
+    return false;
+  }
 }

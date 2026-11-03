@@ -118,6 +118,7 @@ export default function App() {
   const [note, setNote] = useState('');
   const [category, setCategory] = useState('lunch');
   const [entryAccount, setEntryAccount] = useState('cash'); // 'cash' | 'bank'
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState('all'); // 'all' | 'cash' | 'bank'
@@ -475,15 +476,16 @@ export default function App() {
       amount: amt,
       account: entryAccount,
       category: entryType === 'income' ? 'other' : category,
-      date: todayStr,
+      date: entryDate || todayStr,
       note: note.trim() || defaultNote,
     };
 
     const updated = [newTx, ...transactions];
     setTransactions(updated);
-    saveUserData(updated, settings, loans);
+    saveUserData(updated, settings, loans, notes);
     setAmount('');
     setNote('');
+    setEntryDate(todayStr);
     showToast(entryType === 'expense' 
       ? `Spent ${currency} ${amt.toLocaleString()} via ${isBank ? '🏦 Bank' : '💵 Cash'}` 
       : `Added ${currency} ${amt.toLocaleString()} to ${isBank ? '🏦 Bank' : '💵 Cash'}`);
@@ -1736,6 +1738,16 @@ export default function App() {
                   </div>
                 )}
 
+                <div className="input-group date-group">
+                  <input
+                    type="date"
+                    value={entryDate}
+                    onChange={e => setEntryDate(e.target.value)}
+                    className="clean-input clean-date-input"
+                    title={isSi ? 'ගනුදෙනුව සිදු වූ දිනය (අතපසු වූ දින තෝරන්න)' : 'Transaction Date (Pick past dates)'}
+                  />
+                </div>
+
                 <button
                   type="submit"
                   className={`btn-add-submit ${entryType === 'income' ? 'btn-income-submit' : ''}`}
@@ -1748,6 +1760,66 @@ export default function App() {
                   </span>
                 </button>
               </form>
+
+              {/* Past Date Fast-Pick Helper Pills */}
+              <div className="past-date-pills-row">
+                <span className="past-date-label">
+                  <Calendar size={13} />
+                  <span>{isSi ? 'දිනය ඉක්මනින් තෝරන්න:' : 'Date shortcut:'}</span>
+                </span>
+                <button
+                  type="button"
+                  className={`past-date-chip ${entryDate === todayStr ? 'active' : ''}`}
+                  onClick={() => setEntryDate(todayStr)}
+                >
+                  {isSi ? 'අද (Today)' : 'Today'}
+                </button>
+                <button
+                  type="button"
+                  className={`past-date-chip ${(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    return entryDate === d.toISOString().split('T')[0] ? 'active' : '';
+                  })()}`}
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    setEntryDate(d.toISOString().split('T')[0]);
+                  }}
+                >
+                  {isSi ? 'ඊයේ (Yesterday)' : 'Yesterday'}
+                </button>
+                <button
+                  type="button"
+                  className={`past-date-chip ${(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 2);
+                    return entryDate === d.toISOString().split('T')[0] ? 'active' : '';
+                  })()}`}
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 2);
+                    setEntryDate(d.toISOString().split('T')[0]);
+                  }}
+                >
+                  {isSi ? 'පෙරේදා (2 days ago)' : '2 days ago'}
+                </button>
+                <button
+                  type="button"
+                  className={`past-date-chip ${(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 3);
+                    return entryDate === d.toISOString().split('T')[0] ? 'active' : '';
+                  })()}`}
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 3);
+                    setEntryDate(d.toISOString().split('T')[0]);
+                  }}
+                >
+                  {isSi ? 'දින 3කට පෙර (3 days ago)' : '3 days ago'}
+                </button>
+              </div>
 
               {/* 1-Tap Quick Add Tags */}
               <div className="quick-tags-row">

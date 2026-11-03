@@ -1572,9 +1572,111 @@
     width: 100%;
   }
 
+  .date-group {
+    width: 100%;
+    flex: 1;
+  }
+
+  .clean-date-input {
+    width: 100%;
+  }
+
+  .past-date-pills-row {
+    margin-top: 0.5rem;
+    gap: 0.35rem;
+  }
+
+  .past-date-chip {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.68rem;
+  }
+
   .btn-add-submit {
     width: 100%;
     justify-content: center;
+  }
+
+  /* Responsive fixes for Analytics charts on mobile screens */
+  .analytics-header-card {
+    padding: 0.85rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .analytics-timeframe-selector {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.2rem;
+  }
+
+  .tf-pill-btn {
+    padding: 0.4rem 0.2rem;
+    text-align: center;
+    font-size: 0.7rem;
+  }
+
+  .analytics-split-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .analytics-chart-panel {
+    padding: 0.85rem;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .daily-chart-panel {
+    padding: 0.85rem;
+  }
+
+  .daily-barchart-container {
+    height: 200px;
+    padding-top: 1.25rem;
+  }
+
+  .daily-bars-stage {
+    gap: 0.25rem;
+    height: 165px;
+    padding: 0 0.2rem;
+  }
+
+  .bar-data-column {
+    min-width: 18px;
+  }
+
+  .bar-bottom-label {
+    font-size: 0.6rem;
+  }
+
+  .panel-legend-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .legend-chip {
+    font-size: 0.65rem;
+  }
+
+  .donut-svg-stage {
+    width: 200px;
+    height: 200px;
+  }
+
+  .donut-center-glass {
+    width: 120px;
+    height: 120px;
+  }
+
+  .donut-hover-pct {
+    font-size: 1.25rem;
+  }
+
+  .donut-default-number {
+    font-size: 1.35rem;
   }
 }
 
@@ -2823,12 +2925,15 @@
   justify-content: center;
   align-items: center;
   padding: 1rem 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .donut-svg-stage {
   position: relative;
   width: 230px;
   height: 230px;
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3048,6 +3153,10 @@
   height: 220px;
   padding-top: 1.5rem;
   padding-bottom: 0.5rem;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .daily-bars-stage {
@@ -3056,11 +3165,13 @@
   justify-content: space-between;
   height: 180px;
   gap: 0.4rem;
-  padding: 0 0.25rem;
+  padding: 0 0.5rem;
+  min-width: 100%;
 }
 
 .bar-data-column {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4617,6 +4728,60 @@
 .btn-note-delete-mini:hover {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
+}
+
+/* Date Group in Add Transaction Form */
+.date-group {
+  min-width: 140px;
+  flex: 0.8;
+}
+
+.clean-date-input {
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+/* Past Date Shortcut Helper Pills */
+.past-date-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.past-date-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.past-date-chip {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  background: var(--input-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.past-date-chip:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.past-date-chip.active {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+  border-color: #6366f1;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
 }
 
 /* 7. Empty State */
