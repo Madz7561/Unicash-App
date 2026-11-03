@@ -66,6 +66,15 @@ import './App.css';
 
 const AVATARS = ['🎓', '⚡', '🎒', '☕', '🚀', '💡', '🦁', '🌸', '💻', '🎧'];
 
+// Helper to get local date in YYYY-MM-DD format (resets exactly at 12:00 AM local time)
+const getLocalDateString = (dateObj = new Date()) => {
+  const d = new Date(dateObj);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function App() {
   // Current logged in user profile: { id, username, name, avatar }
   const [currentUser, setCurrentUser] = useState(() => {
@@ -118,7 +127,7 @@ export default function App() {
   const [note, setNote] = useState('');
   const [category, setCategory] = useState('lunch');
   const [entryAccount, setEntryAccount] = useState('cash'); // 'cash' | 'bank'
-  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [entryDate, setEntryDate] = useState(() => getLocalDateString());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState('all'); // 'all' | 'cash' | 'bank'
@@ -130,7 +139,7 @@ export default function App() {
   const [loanAmount, setLoanAmount] = useState('');
   const [loanNote, setLoanNote] = useState('');
   const [loanPhone, setLoanPhone] = useState('');
-  const [loanDate, setLoanDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loanDate, setLoanDate] = useState(() => getLocalDateString());
   const [loanPaymentSource, setLoanPaymentSource] = useState('cash'); // 'cash' | 'bank' | 'direct_bill' | 'none'
   const [debtDirectionFilter, setDebtDirectionFilter] = useState('all'); // 'all' | 'lent' | 'borrowed'
   const [loanFilter, setLoanFilter] = useState('all'); // 'all' | 'pending' | 'settled'
@@ -172,6 +181,34 @@ export default function App() {
   });
   const [isEditingLimit, setIsEditingLimit] = useState(false);
   const [limitInput, setLimitInput] = useState('');
+
+  // Category-specific budget limitations (e.g. { breakfast: 300, lunch: 400, dinner: 400, reload: 500 })
+  const [categoryLimits, setCategoryLimits] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unicash_category_limits');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [isCatLimitModalOpen, setIsCatLimitModalOpen] = useState(false);
+
+  // Auto-detect 12:00 AM Midnight New Day Transition
+  const [currentDateStr, setCurrentDateStr] = useState(() => getLocalDateString());
+
+  useEffect(() => {
+    // Check every 30 seconds if day has rolled over at 12:00 AM midnight
+    const checkMidnightInterval = setInterval(() => {
+      const actualToday = getLocalDateString();
+      if (actualToday !== currentDateStr) {
+        setCurrentDateStr(actualToday);
+        setEntryDate(actualToday);
+        showToast(settings.language === 'si' ? '🌅 නව දිනයක් ආරම්භ විය (12:00 AM)!' : '🌅 New day started (12:00 AM)!');
+      }
+    }, 30000);
+
+    return () => clearInterval(checkMidnightInterval);
+  }, [currentDateStr, settings.language]);
 
   const lastUpdatedRef = useRef(0);
   const isSavingRef = useRef(false);
@@ -370,7 +407,8 @@ export default function App() {
     }
   }, [settings.darkMode]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Exact local date (flips to new day automatically at 12:00 AM midnight local time)
+  const todayStr = currentDateStr || getLocalDateString();
   const currency = settings.currency || 'Rs.';
   const isSi = settings.language === 'si';
 
@@ -418,6 +456,41 @@ export default function App() {
   const isLimitExceeded = isLimitActive && todaySpent >= dailyLimit;
   const remainingTodayLimit = Math.max(0, dailyLimit - todaySpent);
   const limitUsagePct = isLimitActive ? Math.min(100, Math.round((todaySpent / dailyLimit) * 100)) : 0;
+
+  // Category-specific spending breakdown for TODAY
+  const todayCategorySpent = useMemo(() => {
+    const map = {};
+    transactions
+      .filter(t => t.type === 'expense' && t.date === todayStr)
+      .forEach(t => {
+        const cat = t.category || 'other';
+        map[cat] = (map[cat] || 0) + Number(t.amount || 0);
+      });
+    return map;
+  }, [transactions, todayStr]);
+
+  // Check any category limit violations for TODAY
+  const exceededCategories = useMemo(() => {
+    const list = [];
+    Object.entries(categoryLimits).forEach(([catId, limitVal]) => {
+      const numLimit = Number(limitVal);
+      if (numLimit > 0) {
+        const spent = todayCategorySpent[catId] || 0;
+        if (spent >= numLimit) {
+          const catInfo = CATEGORIES[catId] || { nameEn: catId, nameSi: catId, badge: '🏷️' };
+          list.push({
+            id: catId,
+            name: isSi ? catInfo.nameSi : catInfo.nameEn,
+            badge: catInfo.badge,
+            limit: numLimit,
+            spent,
+            over: spent - numLimit,
+          });
+        }
+      }
+    });
+    return list;
+  }, [categoryLimits, todayCategorySpent, isSi]);
 
   const recentExpenses = transactions.filter(t => t.type === 'expense');
   const uniqueDates = [...new Set(recentExpenses.map(t => t.date))];
@@ -1743,6 +1816,40 @@ export default function App() {
                       className={`limit-progress-fill ${isLimitExceeded ? 'fill-exceeded' : limitUsagePct >= 80 ? 'fill-danger' : 'fill-safe'}`}
                       style={{ width: `${Math.min(100, limitUsagePct)}%` }}
                     />
+                  </div>
+                )}
+
+                {/* Category Limits Management & Exceeded Alerts */}
+                <div className="cat-limits-summary-bar">
+                  <div className="cat-limits-info-left">
+                    <span className="cat-limits-icon">📊</span>
+                    <span className="cat-limits-text">
+                      {Object.keys(categoryLimits).length > 0
+                        ? (isSi
+                          ? `කාණ්ඩ සීමා (${Object.keys(categoryLimits).length} ක් සකසා ඇත)`
+                          : `Category Budgets (${Object.keys(categoryLimits).length} active)`)
+                        : (isSi ? 'කාණ්ඩ අනුව මුදල් සීමා (Breakfast, Lunch, Dinner...)' : 'Set Category Budgets')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsCatLimitModalOpen(true)}
+                    className="btn-open-cat-limits"
+                  >
+                    <span>{isSi ? 'සීමා සකසන්න' : 'Manage Limits'}</span>
+                  </button>
+                </div>
+
+                {/* Exceeded Category Warning Chips */}
+                {exceededCategories.length > 0 && (
+                  <div className="cat-exceeded-alerts-list">
+                    {exceededCategories.map(c => (
+                      <div key={c.id} className="cat-exceeded-chip">
+                        <span>⚠️ <strong>{c.badge} {c.name}:</strong></span>
+                        <span>{currency} {c.spent.toLocaleString()} / {currency} {c.limit.toLocaleString()}</span>
+                        <span className="chip-over-tag">+{currency} {c.over.toLocaleString()} over</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -3415,6 +3522,112 @@ export default function App() {
             <div className="modal-actions-row">
               <button onClick={() => setIsPhoneModalOpen(false)} className="btn-modal-confirm">
                 {isSi ? 'හරි, තේරුණා' : 'Got it'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Limits Configuration Modal */}
+      {isCatLimitModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCatLimitModalOpen(false)}>
+          <div className="modal-card cat-limits-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>{isSi ? 'කාණ්ඩ අනුව වියදම් සීමා' : 'Category Spending Budgets'}</h3>
+                <p className="modal-subtitle">
+                  {isSi
+                    ? 'එක් එක් කාණ්ඩය (Breakfast, Lunch, Reload...) සඳහා උපරිම දෛනික සීමා සකසන්න'
+                    : 'Set custom daily spending caps per category to track limits'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCatLimitModalOpen(false)}
+                className="btn-modal-close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="cat-limits-grid">
+              {[
+                'breakfast',
+                'lunch',
+                'dinner',
+                'reload',
+                'transport',
+                'food',
+                'academic',
+                'entertainment',
+                'boarding',
+              ].map(catId => {
+                const cat = CATEGORIES[catId] || CATEGORIES.other;
+                const currentLimit = categoryLimits[catId] || '';
+                const todaySpentInCat = todayCategorySpent[catId] || 0;
+                const isOver = currentLimit > 0 && todaySpentInCat >= currentLimit;
+
+                return (
+                  <div key={catId} className={`cat-limit-row ${isOver ? 'is-cat-over' : ''}`}>
+                    <div className="cat-limit-meta">
+                      <span className="cat-limit-badge">{cat.badge}</span>
+                      <div className="cat-limit-names">
+                        <strong>{isSi ? cat.nameSi : cat.nameEn}</strong>
+                        <span className="cat-today-spent">
+                          {isSi ? 'අද වියදම:' : 'Today:'} {currency} {todaySpentInCat.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="cat-limit-input-wrap">
+                      <span className="cat-prefix">{currency}</span>
+                      <input
+                        type="number"
+                        placeholder={isSi ? 'සීමාවක් නැත' : 'No limit'}
+                        value={currentLimit}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setCategoryLimits(prev => {
+                            const updated = { ...prev };
+                            if (!val || Number(val) <= 0) {
+                              delete updated[catId];
+                            } else {
+                              updated[catId] = Number(val);
+                            }
+                            try {
+                              localStorage.setItem('unicash_category_limits', JSON.stringify(updated));
+                            } catch {}
+                            return updated;
+                          });
+                        }}
+                        className="cat-limit-input"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="modal-actions-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryLimits({});
+                  try {
+                    localStorage.removeItem('unicash_category_limits');
+                  } catch {}
+                  showToast(isSi ? 'සියලුම කාණ්ඩ සීමා ඉවත් කරන ලදී' : 'All category limits cleared');
+                }}
+                className="btn-modal-cancel"
+              >
+                {isSi ? 'සියල්ල ඉවත් කරන්න' : 'Clear All'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCatLimitModalOpen(false)}
+                className="btn-modal-confirm"
+              >
+                {isSi ? 'තහවුරු කරන්න' : 'Done'}
               </button>
             </div>
           </div>
