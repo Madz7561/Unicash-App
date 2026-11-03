@@ -161,6 +161,18 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [syncStatus, setSyncStatus] = useState('synced'); // 'synced' | 'syncing' | 'offline'
 
+  // Custom Daily Spending Limit (0 extra API / DB cost - LocalStorage Cache)
+  const [dailyLimit, setDailyLimit] = useState(() => {
+    try {
+      const saved = localStorage.getItem('unicash_daily_limit');
+      return saved !== null ? Number(saved) : 1500;
+    } catch {
+      return 1500;
+    }
+  });
+  const [isEditingLimit, setIsEditingLimit] = useState(false);
+  const [limitInput, setLimitInput] = useState('');
+
   const lastUpdatedRef = useRef(0);
   const isSavingRef = useRef(false);
   const toastTimeoutRef = useRef(null);
@@ -400,6 +412,12 @@ export default function App() {
   const todaySpent = transactions
     .filter(t => t.type === 'expense' && t.date === todayStr)
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+  // Pure Client-side Custom Limit Evaluation (0 Token / 0 API call)
+  const isLimitActive = dailyLimit > 0;
+  const isLimitExceeded = isLimitActive && todaySpent >= dailyLimit;
+  const remainingTodayLimit = Math.max(0, dailyLimit - todaySpent);
+  const limitUsagePct = isLimitActive ? Math.min(100, Math.round((todaySpent / dailyLimit) * 100)) : 0;
 
   const recentExpenses = transactions.filter(t => t.type === 'expense');
   const uniqueDates = [...new Set(recentExpenses.map(t => t.date))];
@@ -1646,6 +1664,89 @@ export default function App() {
 
             {/* 2. Fast Transaction Entry */}
             <section className="transaction-input-section">
+              {/* Daily Custom Spending Limit & Real-time Warning Banner */}
+              <div className={`spending-limit-card ${isLimitExceeded ? 'limit-exceeded' : ''}`}>
+                <div className="limit-card-header">
+                  <div className="limit-title-wrap">
+                    <span className="limit-icon">{isLimitExceeded ? '⚠️' : '🎯'}</span>
+                    <div className="limit-text-block">
+                      <strong className="limit-main-label">
+                        {isSi ? 'දෛනික වියදම් සීමාව (Daily Limit)' : 'Daily Spending Limit'}
+                      </strong>
+                      <span className="limit-sub-hint">
+                        {isLimitExceeded
+                          ? (isSi
+                            ? `අවවාදයයි! අද සීමාවට වඩා ${currency} ${(todaySpent - dailyLimit).toLocaleString()} ක් වැඩියෙන් වියදම් කර ඇත!`
+                            : `Warning! Today's budget exceeded by ${currency} ${(todaySpent - dailyLimit).toLocaleString()}!`)
+                          : (isSi
+                            ? `අද දින වැය: ${currency} ${todaySpent.toLocaleString()} / ${currency} ${dailyLimit.toLocaleString()} (ඉතිරි: ${currency} ${remainingTodayLimit.toLocaleString()})`
+                            : `Spent today: ${currency} ${todaySpent.toLocaleString()} of ${currency} ${dailyLimit.toLocaleString()} (${currency} ${remainingTodayLimit.toLocaleString()} left)`)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="limit-actions-wrap">
+                    {isEditingLimit ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const val = Math.max(0, parseFloat(limitInput) || 0);
+                          setDailyLimit(val);
+                          try {
+                            localStorage.setItem('unicash_daily_limit', String(val));
+                          } catch {}
+                          setIsEditingLimit(false);
+                          showToast(val > 0 ? `Daily limit set to ${currency} ${val.toLocaleString()}` : 'Daily limit disabled');
+                        }}
+                        className="limit-edit-form"
+                      >
+                        <input
+                          type="number"
+                          autoFocus
+                          placeholder="e.g. 1500"
+                          value={limitInput}
+                          onChange={(e) => setLimitInput(e.target.value)}
+                          className="limit-input-inline"
+                        />
+                        <button type="submit" className="btn-limit-save">
+                          {isSi ? 'හරි' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingLimit(false)}
+                          className="btn-limit-cancel"
+                        >
+                          ✕
+                        </button>
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLimitInput(String(dailyLimit));
+                          setIsEditingLimit(true);
+                        }}
+                        className="btn-set-limit"
+                        title={isSi ? 'ඔබ කැමති සීමාවක් සකසන්න' : 'Change Daily Limit'}
+                      >
+                        <Edit3 size={13} />
+                        <span>{currency} {dailyLimit.toLocaleString()}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Visual Progress Bar */}
+                {isLimitActive && (
+                  <div className="limit-progress-bar-wrap">
+                    <div
+                      className={`limit-progress-fill ${isLimitExceeded ? 'fill-exceeded' : limitUsagePct >= 80 ? 'fill-danger' : 'fill-safe'}`}
+                      style={{ width: `${Math.min(100, limitUsagePct)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="entry-type-selector">
                 <button
                   type="button"
