@@ -66,6 +66,20 @@ import './App.css';
 
 const AVATARS = ['🎓', '⚡', '🎒', '☕', '🚀', '💡', '🦁', '🌸', '💻', '🎧'];
 
+// Helper to detect if a transaction is an internal transfer (ATM withdrawal / deposit)
+export const isTransferTx = (t) => {
+  if (!t) return false;
+  if (t.isTransfer === true) return true;
+  if (t.category === 'transfer') return true;
+  const idStr = String(t.id || '');
+  if (idStr.startsWith('tx-tf-')) return true;
+  const note = String(t.note || '').toLowerCase();
+  if (note.includes('atm') || note.includes('bank ➔ cash') || note.includes('cash ➔ bank') || note.includes('තැන්පතුව') || note.includes('මුදල් ගැනීම')) {
+    return true;
+  }
+  return false;
+};
+
 // Helper to get local date in YYYY-MM-DD format (resets exactly at 12:00 AM local time)
 const getLocalDateString = (dateObj = new Date()) => {
   const d = new Date(dateObj);
@@ -413,12 +427,13 @@ export default function App() {
   const isSi = settings.language === 'si';
 
   // Totals calculations for active user
+  // Internal transfers (e.g. Bank to Cash ATM withdrawal) do NOT count as external expenses or income
   const totalIncome = transactions
-    .filter(t => t.type === 'income')
+    .filter(t => t.type === 'income' && !isTransferTx(t))
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   const totalExpense = transactions
-    .filter(t => t.type === 'expense')
+    .filter(t => t.type === 'expense' && !isTransferTx(t))
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   // 1. Cash in Hand calculations (default is 'cash' for backward compatibility)
@@ -447,8 +462,9 @@ export default function App() {
   const totalBalance = cashBalance + bankBalance;
   const currentBalance = cashBalance; // For cash survival estimate
 
+  // Daily spending does not include internal transfers (ATM withdrawal is not spending)
   const todaySpent = transactions
-    .filter(t => t.type === 'expense' && t.date === todayStr)
+    .filter(t => t.type === 'expense' && t.date === todayStr && !isTransferTx(t))
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   // Pure Client-side Custom Limit Evaluation (0 Token / 0 API call)
@@ -457,11 +473,11 @@ export default function App() {
   const remainingTodayLimit = Math.max(0, dailyLimit - todaySpent);
   const limitUsagePct = isLimitActive ? Math.min(100, Math.round((todaySpent / dailyLimit) * 100)) : 0;
 
-  // Category-specific spending breakdown for TODAY
+  // Category-specific spending breakdown for TODAY (excluding transfers)
   const todayCategorySpent = useMemo(() => {
     const map = {};
     transactions
-      .filter(t => t.type === 'expense' && t.date === todayStr)
+      .filter(t => t.type === 'expense' && t.date === todayStr && !isTransferTx(t))
       .forEach(t => {
         const cat = t.category || 'other';
         map[cat] = (map[cat] || 0) + Number(t.amount || 0);
@@ -492,7 +508,7 @@ export default function App() {
     return list;
   }, [categoryLimits, todayCategorySpent, isSi]);
 
-  const recentExpenses = transactions.filter(t => t.type === 'expense');
+  const recentExpenses = transactions.filter(t => t.type === 'expense' && !isTransferTx(t));
   const uniqueDates = [...new Set(recentExpenses.map(t => t.date))];
   const numDaysActive = Math.max(1, uniqueDates.length);
   const avgDailySpend = Math.round(totalExpense / numDaysActive) || 450;
@@ -664,7 +680,8 @@ export default function App() {
         type: 'expense',
         amount: amt,
         account: 'bank',
-        category: 'other',
+        category: 'transfer',
+        isTransfer: true,
         date: todayStr,
         note: isSi ? 'ATM එකෙන් මුදල් ගැනීම (Bank ➔ Cash)' : 'ATM Cash Withdrawal (Bank ➔ Cash)',
       };
@@ -673,7 +690,8 @@ export default function App() {
         type: 'income',
         amount: amt,
         account: 'cash',
-        category: 'other',
+        category: 'transfer',
+        isTransfer: true,
         date: todayStr,
         note: isSi ? 'ATM මුදල් පසුම්බියට (Cash in Hand)' : 'ATM Cash in Hand',
       };
@@ -689,7 +707,8 @@ export default function App() {
         type: 'expense',
         amount: amt,
         account: 'cash',
-        category: 'other',
+        category: 'transfer',
+        isTransfer: true,
         date: todayStr,
         note: isSi ? 'බැංකුවට දැමූ මුදල් (Cash ➔ Bank)' : 'Cash Deposit to Bank',
       };
@@ -698,7 +717,8 @@ export default function App() {
         type: 'income',
         amount: amt,
         account: 'bank',
-        category: 'other',
+        category: 'transfer',
+        isTransfer: true,
         date: todayStr,
         note: isSi ? 'බැංකු තැන්පතුව (Bank Deposit)' : 'Bank Account Deposit',
       };
@@ -1027,6 +1047,7 @@ export default function App() {
 
   // Resolve effective category (handles backward-compatibility for meal & debt notes)
   const getEffectiveCategory = (t) => {
+    if (isTransferTx(t)) return 'transfer';
     if (t.category === 'breakfast' || t.category === 'lunch' || t.category === 'dinner') return t.category;
     if (t.category === 'lent' || (t.loanId?.startsWith('loan-') && t.type === 'expense')) return 'lent';
     if (t.category === 'borrowed' || (t.loanId?.startsWith('loan-') && t.type === 'income')) return 'borrowed';
@@ -2189,17 +2210,18 @@ export default function App() {
                     const effCat = getEffectiveCategory(t);
                     const cat = CATEGORIES[effCat] || CATEGORIES.other;
                     const isBankAcc = t.account === 'bank';
+                    const isTransfer = isTransferTx(t);
                     return (
                       <div key={t.id} className="simple-tx-item">
                         <div className="tx-left-col">
                           <div
-                            className={`tx-cat-circle ${isIncome && effCat !== 'borrowed' ? 'circle-income' : ''}`}
+                            className={`tx-cat-circle ${isTransfer ? 'circle-transfer' : isIncome && effCat !== 'borrowed' ? 'circle-income' : ''}`}
                             style={{
-                              backgroundColor: isIncome && effCat !== 'borrowed' ? 'rgba(16, 185, 129, 0.15)' : cat.bgColor,
-                              color: isIncome && effCat !== 'borrowed' ? '#10b981' : cat.color,
+                              backgroundColor: isTransfer ? 'rgba(14, 165, 233, 0.15)' : isIncome && effCat !== 'borrowed' ? 'rgba(16, 185, 129, 0.15)' : cat.bgColor,
+                              color: isTransfer ? '#0ea5e9' : isIncome && effCat !== 'borrowed' ? '#10b981' : cat.color,
                             }}
                           >
-                            {isIncome && effCat !== 'borrowed' ? <ArrowUpRight size={16} /> : <CategoryIcon categoryId={effCat} size={15} />}
+                            {isTransfer ? <ArrowLeftRight size={15} /> : isIncome && effCat !== 'borrowed' ? <ArrowUpRight size={16} /> : <CategoryIcon categoryId={effCat} size={15} />}
                           </div>
                           <div>
                             <div className="tx-item-title-row">
@@ -2207,11 +2229,11 @@ export default function App() {
                               <span
                                 className="tx-category-tag"
                                 style={{
-                                  backgroundColor: cat.bgColor,
-                                  color: cat.color,
+                                  backgroundColor: isTransfer ? 'rgba(14, 165, 233, 0.15)' : cat.bgColor,
+                                  color: isTransfer ? '#0ea5e9' : cat.color,
                                 }}
                               >
-                                {cat.badge} {isSi ? cat.nameSi : cat.nameEn}
+                                {isTransfer ? '🔄' : cat.badge} {isTransfer ? (isSi ? 'මාරුවීමක්' : 'Transfer') : (isSi ? cat.nameSi : cat.nameEn)}
                               </span>
                               <span className={`tx-account-tag ${isBankAcc ? 'acc-bank-tag' : 'acc-cash-tag'}`}>
                                 {isBankAcc ? '🏦 Bank' : '💵 Cash'}
@@ -2222,8 +2244,8 @@ export default function App() {
                         </div>
 
                         <div className="tx-right-col">
-                          <span className={`tx-price ${isIncome ? 'income-color' : ''}`}>
-                            {isIncome ? '+' : '-'}{currency} {Number(t.amount).toLocaleString()}
+                          <span className={`tx-price ${isTransfer ? 'transfer-color' : isIncome ? 'income-color' : ''}`}>
+                            {isTransfer ? (isIncome ? '+' : '-') : isIncome ? '+' : '-'}{currency} {Number(t.amount).toLocaleString()}
                           </span>
                           <button
                             onClick={() => handleDelete(t.id)}

@@ -16,6 +16,7 @@ import {
   HandCoins,
   Receipt,
   CookingPot,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 export default function CategoryIcon({ categoryId, size = 18, className = '' }) {
@@ -44,6 +45,8 @@ export default function CategoryIcon({ categoryId, size = 18, className = '' }) 
       return <HeartPulse size={size} className={className} />;
     case 'entertainment':
       return <Coffee size={size} className={className} />;
+    case 'transfer':
+      return <ArrowLeftRight size={size} className={className} />;
     case 'income':
       return <TrendingUp size={size} className={className} />;
     default:

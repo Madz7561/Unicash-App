@@ -107,6 +107,15 @@ export const CATEGORIES = {
     icon: 'HeartPulse',
     badge: '✨',
   },
+  transfer: {
+    id: 'transfer',
+    nameEn: 'Internal Transfer',
+    nameSi: 'ගිණුම් අතර මාරුවීම්',
+    color: '#0ea5e9',
+    bgColor: 'rgba(14, 165, 233, 0.15)',
+    icon: 'ArrowLeftRight',
+    badge: '🔄',
+  },
   other: {
     id: 'other',
     nameEn: 'Other',

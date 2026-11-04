@@ -17,6 +17,16 @@ import {
   Award,
 } from 'lucide-react';
 
+// Helper to identify internal account transfers
+const isTransferTx = (t) => {
+  if (!t) return false;
+  if (t.isTransfer === true || t.category === 'transfer') return true;
+  const idStr = String(t.id || '');
+  if (idStr.startsWith('tx-tf-')) return true;
+  const note = String(t.note || '').toLowerCase();
+  return note.includes('atm') || note.includes('bank ➔ cash') || note.includes('cash ➔ bank') || note.includes('තැන්පතුව') || note.includes('මුදල් ගැනීම');
+};
+
 export default function Charts({ transactions = [], currency = 'Rs.', language = 'en' }) {
   const isSi = language === 'si';
   const [timeframe, setTimeframe] = useState('all'); // '7d' | '14d' | '30d' | 'all'
@@ -34,9 +44,9 @@ export default function Charts({ transactions = [], currency = 'Rs.', language =
     return transactions.filter(t => t.date >= cutoffStr);
   }, [transactions, timeframe]);
 
-  // Income vs Expense Totals
-  const incomeTxs = filteredTransactions.filter(t => t.type === 'income');
-  const expenseTxs = filteredTransactions.filter(t => t.type === 'expense');
+  // Income vs Expense Totals (Exclude internal transfers between Bank and Cash)
+  const incomeTxs = filteredTransactions.filter(t => t.type === 'income' && !isTransferTx(t));
+  const expenseTxs = filteredTransactions.filter(t => t.type === 'expense' && !isTransferTx(t));
 
   const totalIncome = incomeTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const totalExpense = expenseTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
