@@ -13,6 +13,10 @@ import {
   registerApi,
   fetchUserDataApi,
   saveUserDataApi,
+  fetchAllUsersAdminApi,
+  resetUserPasswordAdminApi,
+  toggleUserSuspensionAdminApi,
+  deleteUserAdminApi,
 } from './apiService';
 import {
   Plus,
@@ -61,6 +65,11 @@ import {
   FileText,
   CheckSquare,
   Square,
+  Shield,
+  RefreshCw,
+  UserX,
+  UserCheck,
+  Ban,
 } from 'lucide-react';
 import './App.css';
 
@@ -209,6 +218,41 @@ export default function App() {
 
   // Auto-detect 12:00 AM Midnight New Day Transition
   const [currentDateStr, setCurrentDateStr] = useState(() => getLocalDateString());
+
+  // Admin Control Panel States
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminResetModalUser, setAdminResetModalUser] = useState(null);
+  const [adminNewPassword, setAdminNewPassword] = useState('');
+  const [adminResetting, setAdminResetting] = useState(false);
+
+  // Check if current user has Admin privileges
+  const isAdmin = useMemo(() => {
+    if (!currentUser) return false;
+    const u = String(currentUser.username || '').toLowerCase().trim();
+    return u === 'madz7561' || u === 'admin' || currentUser.role === 'admin';
+  }, [currentUser]);
+
+  // Load all users whenever Admin tab is opened
+  const loadAdminUsers = async () => {
+    setAdminLoading(true);
+    try {
+      const list = await fetchAllUsersAdminApi();
+      setAdminUsers(list);
+    } catch (err) {
+      console.error(err);
+      showToast('Error loading user database');
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin && activeTab === 'admin') {
+      loadAdminUsers();
+    }
+  }, [isAdmin, activeTab]);
 
   useEffect(() => {
     // Check every 30 seconds if day has rolled over at 12:00 AM midnight
@@ -1448,6 +1492,16 @@ export default function App() {
               <Settings size={16} />
               <span>{isSi ? 'සැකසුම්' : 'Settings'}</span>
             </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`tab-btn admin-nav-btn ${activeTab === 'admin' ? 'active' : ''}`}
+                title="Admin Control Center"
+              >
+                <Shield size={16} />
+                <span>Admin</span>
+              </button>
+            )}
           </nav>
         </header>
 
@@ -3170,6 +3224,236 @@ export default function App() {
           </main>
         )}
 
+        {/* ================= TAB 6: ADMIN CONTROL PANEL ================= */}
+        {activeTab === 'admin' && isAdmin && (
+          <main className="tab-content admin-tab-content">
+            <div className="admin-header-card">
+              <div className="admin-header-main">
+                <div className="admin-badge-title">
+                  <span className="admin-shield-icon"><Shield size={24} /></span>
+                  <div>
+                    <h3>{isSi ? 'UniCash පරිපාලන පාලක පැනලය (Admin Panel)' : 'UniCash Admin Control Center'}</h3>
+                    <p className="admin-subtext">
+                      {isSi
+                        ? 'ලියාපදිංචි සියලු පරිශීලකයින්, ගිණුම් ශේෂයන් සහ මුරපද මෙතැනින් පාලනය කරන්න'
+                        : 'Manage registered users, review balances, reset passwords & maintain accounts'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-refresh-admin"
+                  onClick={loadAdminUsers}
+                  disabled={adminLoading}
+                  title="Refresh users"
+                >
+                  <RefreshCw size={16} className={adminLoading ? 'spin-icon' : ''} />
+                  <span>{adminLoading ? (isSi ? 'පූරණය වේ...' : 'Loading...') : (isSi ? 'යාවත්කාලීන' : 'Refresh')}</span>
+                </button>
+              </div>
+
+              {/* Admin Stat Counters */}
+              <div className="admin-stats-grid">
+                <div className="admin-stat-card">
+                  <span className="admin-stat-label">{isSi ? 'මුළු සාමාජිකයින්' : 'Total Users'}</span>
+                  <span className="admin-stat-val">{adminUsers.length}</span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="admin-stat-label">{isSi ? 'ක්‍රියාකාරී ගිණුම්' : 'Active Accounts'}</span>
+                  <span className="admin-stat-val text-success">
+                    {adminUsers.filter(u => !u.isSuspended).length}
+                  </span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="admin-stat-label">{isSi ? 'අත්හිටුවූ ගිණුම්' : 'Suspended'}</span>
+                  <span className="admin-stat-val text-danger">
+                    {adminUsers.filter(u => u.isSuspended).length}
+                  </span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="admin-stat-label">{isSi ? 'මුළු ගනුදෙනු ප්‍රමාණය' : 'Total System Txs'}</span>
+                  <span className="admin-stat-val text-accent">
+                    {adminUsers.reduce((sum, u) => sum + (u.txCount || 0), 0)}
+                  </span>
+                </div>
+              </div>
+
+              {/* User Search Bar */}
+              <div className="admin-search-wrap">
+                <Search size={16} className="search-icon-inside" />
+                <input
+                  type="text"
+                  placeholder={isSi ? 'පරිශීලක නම හෝ Username එක සොයන්න...' : 'Search by name or @username...'}
+                  value={adminSearch}
+                  onChange={e => setAdminSearch(e.target.value)}
+                  className="admin-search-input"
+                />
+                {adminSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setAdminSearch('')}
+                    className="admin-search-clear"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Users List */}
+            <div className="admin-users-container">
+              {adminLoading ? (
+                <div className="admin-loading-state">
+                  <RefreshCw size={24} className="spin-icon" />
+                  <p>{isSi ? 'පරිශීලක දත්ත ලබා ගනිමින්...' : 'Fetching user accounts...'}</p>
+                </div>
+              ) : adminUsers.length === 0 ? (
+                <div className="empty-state">
+                  <p>{isSi ? 'කිසිදු පරිශීලකයෙක් හමු නොවීය' : 'No users found in database'}</p>
+                </div>
+              ) : (
+                <div className="admin-users-grid">
+                  {adminUsers
+                    .filter(u => {
+                      if (!adminSearch.trim()) return true;
+                      const q = adminSearch.toLowerCase();
+                      return (
+                        (u.name && u.name.toLowerCase().includes(q)) ||
+                        (u.username && u.username.toLowerCase().includes(q))
+                      );
+                    })
+                    .map(user => {
+                      const isOwnerAdmin =
+                        user.username?.toLowerCase() === 'madz7561' ||
+                        user.username?.toLowerCase() === 'admin';
+
+                      return (
+                        <div
+                          key={user.id}
+                          className={`admin-user-card ${user.isSuspended ? 'is-suspended' : ''}`}
+                        >
+                          <div className="admin-user-card-head">
+                            <div className="admin-user-identity">
+                              <span className="admin-user-avatar">{user.avatar || '🎓'}</span>
+                              <div className="admin-user-info">
+                                <div className="admin-user-name-row">
+                                  <strong>{user.name || 'User'}</strong>
+                                  {isOwnerAdmin && (
+                                    <span className="admin-pill-tag">👑 Admin / Owner</span>
+                                  )}
+                                  {user.isSuspended && (
+                                    <span className="suspended-pill-tag">🚫 Suspended</span>
+                                  )}
+                                </div>
+                                <span className="admin-user-handle">@{user.username}</span>
+                              </div>
+                            </div>
+                            <span className="admin-user-date">
+                              {user.createdAt
+                                ? new Date(user.createdAt).toLocaleDateString()
+                                : 'Registered'}
+                            </span>
+                          </div>
+
+                          {/* Financial & Activity Summary per User */}
+                          <div className="admin-user-metrics">
+                            <div className="admin-metric-col">
+                              <span className="metric-label">{isSi ? 'මුදල් ශේෂය' : 'Cash'}</span>
+                              <span className={`metric-val ${(user.cashBalance || 0) < 0 ? 'text-danger' : ''}`}>
+                                {currency} {(user.cashBalance || 0).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="admin-metric-col">
+                              <span className="metric-label">{isSi ? 'බැංකු ශේෂය' : 'Bank'}</span>
+                              <span className={`metric-val ${(user.bankBalance || 0) < 0 ? 'text-danger' : ''}`}>
+                                {currency} {(user.bankBalance || 0).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="admin-metric-col">
+                              <span className="metric-label">{isSi ? 'ගනුදෙනු' : 'Txs'}</span>
+                              <span className="metric-val">{user.txCount || 0}</span>
+                            </div>
+                            <div className="admin-metric-col">
+                              <span className="metric-label">{isSi ? 'ණය වාර්තා' : 'Debts'}</span>
+                              <span className="metric-val">{user.loansCount || 0}</span>
+                            </div>
+                          </div>
+
+                          {/* Admin Action Buttons */}
+                          <div className="admin-user-actions">
+                            <button
+                              type="button"
+                              className="admin-action-btn btn-reset-pw"
+                              onClick={() => {
+                                setAdminResetModalUser(user);
+                                setAdminNewPassword('');
+                              }}
+                              title="Reset Password"
+                            >
+                              <KeyRound size={14} />
+                              <span>{isSi ? 'Password මාරු' : 'Reset PW'}</span>
+                            </button>
+
+                            {!isOwnerAdmin && (
+                              <button
+                                type="button"
+                                className={`admin-action-btn ${user.isSuspended ? 'btn-activate' : 'btn-suspend'}`}
+                                onClick={async () => {
+                                  const nextState = !user.isSuspended;
+                                  const confirmMsg = nextState
+                                    ? `Are you sure you want to suspend @${user.username}?`
+                                    : `Are you sure you want to activate @${user.username}?`;
+                                  if (confirm(confirmMsg)) {
+                                    const ok = await toggleUserSuspensionAdminApi(user.id, nextState);
+                                    if (ok) {
+                                      showToast(nextState ? `User @${user.username} suspended` : `User @${user.username} activated`);
+                                      setAdminUsers(prev =>
+                                        prev.map(item =>
+                                          item.id === user.id ? { ...item, isSuspended: nextState } : item
+                                        )
+                                      );
+                                    } else {
+                                      showToast('Failed to update user status');
+                                    }
+                                  }
+                                }}
+                              >
+                                {user.isSuspended ? <UserCheck size={14} /> : <Ban size={14} />}
+                                <span>{user.isSuspended ? (isSi ? 'ක්‍රියාත්මක' : 'Activate') : (isSi ? 'අත්හිටුවන්න' : 'Suspend')}</span>
+                              </button>
+                            )}
+
+                            {!isOwnerAdmin && (
+                              <button
+                                type="button"
+                                className="admin-action-btn btn-delete-user"
+                                onClick={async () => {
+                                  if (confirm(`⚠️ PERMANENT DELETE WARNING: This will permanently delete user @${user.username} and all their transactions from Firebase. Proceed?`)) {
+                                    const ok = await deleteUserAdminApi(user.id);
+                                    if (ok) {
+                                      showToast(`User @${user.username} deleted permanently`);
+                                      setAdminUsers(prev => prev.filter(item => item.id !== user.id));
+                                    } else {
+                                      showToast('Failed to delete user');
+                                    }
+                                  }
+                                }}
+                                title="Delete User Account"
+                              >
+                                <Trash2 size={14} />
+                                <span>{isSi ? 'මකන්න' : 'Delete'}</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </main>
+        )}
+
         {/* Madz system Official Footer */}
         <footer className="madz-app-footer">
           <p>
@@ -3652,6 +3936,89 @@ export default function App() {
                 {isSi ? 'තහවුරු කරන්න' : 'Done'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Reset Password Modal */}
+      {adminResetModalUser && (
+        <div className="modal-overlay" onClick={() => !adminResetting && setAdminResetModalUser(null)}>
+          <div className="modal-card admin-pw-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-header-icon-title">
+                <KeyRound size={22} className="text-accent" />
+                <div>
+                  <h3>{isSi ? 'මුරපදය නැවත සැකසීම (Reset Password)' : 'Reset User Password'}</h3>
+                  <p className="modal-subtitle">
+                    User: <strong>{adminResetModalUser.name}</strong> (@{adminResetModalUser.username})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !adminResetting && setAdminResetModalUser(null)}
+                className="btn-modal-close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!adminNewPassword.trim() || adminNewPassword.trim().length < 4) {
+                  showToast('Password must be at least 4 characters');
+                  return;
+                }
+                setAdminResetting(true);
+                const res = await resetUserPasswordAdminApi(adminResetModalUser.id, adminNewPassword.trim());
+                setAdminResetting(false);
+                if (res.success) {
+                  showToast(`Password successfully updated for @${adminResetModalUser.username}`);
+                  setAdminResetModalUser(null);
+                  setAdminNewPassword('');
+                } else {
+                  showToast('Failed to reset password: ' + (res.error || ''));
+                }
+              }}
+              className="admin-pw-form"
+            >
+              <div className="form-field">
+                <label>{isSi ? 'නව මුරපදය (New Password):' : 'Enter New Password:'}</label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder={isSi ? 'අලුත් password එක මෙතන ලියන්න' : 'Enter new password for user'}
+                  value={adminNewPassword}
+                  onChange={e => setAdminNewPassword(e.target.value)}
+                  className="clean-input clean-box-input"
+                />
+                <span className="input-hint-subtle">
+                  {isSi
+                    ? 'මෙම මුරපදය මඟින් පරිශීලකයාට ක්ෂණිකව Log in විය හැක.'
+                    : 'The user will be able to log in immediately using this new password.'}
+                </span>
+              </div>
+
+              <div className="modal-actions-row">
+                <button
+                  type="button"
+                  disabled={adminResetting}
+                  onClick={() => setAdminResetModalUser(null)}
+                  className="btn-modal-cancel"
+                >
+                  {isSi ? 'අවලංගු කරන්න' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={adminResetting}
+                  className="btn-modal-confirm"
+                >
+                  {adminResetting ? (isSi ? 'සුරැකෙමින්...' : 'Updating...') : (isSi ? 'මුරපදය සුරකින්න' : 'Save New Password')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
