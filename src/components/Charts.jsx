@@ -17,6 +17,15 @@ import {
   Award,
 } from 'lucide-react';
 
+// Helper to get local date in YYYY-MM-DD
+const getLocalDateString = (dateObj = new Date()) => {
+  const d = new Date(dateObj);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Helper to identify internal account transfers
 const isTransferTx = (t) => {
   if (!t) return false;
@@ -40,7 +49,7 @@ export default function Charts({ transactions = [], currency = 'Rs.', language =
     const days = timeframe === '7d' ? 7 : timeframe === '14d' ? 14 : 30;
     const cutoff = new Date();
     cutoff.setDate(now.getDate() - days);
-    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const cutoffStr = getLocalDateString(cutoff);
     return transactions.filter(t => t.date >= cutoffStr);
   }, [transactions, timeframe]);
 
@@ -115,7 +124,7 @@ export default function Charts({ transactions = [], currency = 'Rs.', language =
     for (let i = barDaysCount - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(today.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       const dayLabel = `${d.getDate()}/${d.getMonth() + 1}`;
       const dayName = d.toLocaleDateString(isSi ? 'si-LK' : 'en-US', { weekday: 'short' });
       const daySpent = expenseTxs
@@ -493,14 +502,21 @@ export default function Charts({ transactions = [], currency = 'Rs.', language =
                   <div
                     key={d.dateStr}
                     className={`bar-data-column ${d.isToday ? 'is-today' : ''} ${isPeak ? 'is-peak' : ''}`}
+                    onClick={() => setHoveredBar(hoveredBar?.dateStr === d.dateStr ? null : d)}
                     onMouseEnter={() => setHoveredBar(d)}
                     onMouseLeave={() => setHoveredBar(null)}
                   >
-                    {/* Tooltip on hover */}
+                    {/* Amount badge on top of each bar */}
+                    <div className={`bar-top-amount-label ${d.daySpent > 0 ? 'has-spend' : 'zero-spend'}`}>
+                      {d.daySpent > 0 ? (d.daySpent >= 1000 ? `${(d.daySpent / 1000).toFixed(1)}k` : d.daySpent) : '0'}
+                    </div>
+
+                    {/* Tooltip on hover/click */}
                     {isHovered && (
                       <div className="bar-hover-popover">
                         <strong className="pop-amount">{currency} {d.daySpent.toLocaleString()}</strong>
-                        <span className="pop-date">{d.dayName}, {d.dayLabel}</span>
+                        <span className="pop-date">{d.dayName}, {d.dayLabel} ({d.dateStr})</span>
+                        <span className="pop-hint">{d.daySpent > 0 ? (isSi ? 'දිනක වියදම' : 'Total spent') : (isSi ? 'වියදම් නැත' : 'No expenses')}</span>
                       </div>
                     )}
 
@@ -527,6 +543,21 @@ export default function Charts({ transactions = [], currency = 'Rs.', language =
                 title={`Average: ${currency} ${avgDailySpend}`}
               >
                 <span className="avg-line-label">Avg: {currency} {avgDailySpend}</span>
+              </div>
+            )}
+            {/* Selected / Inspected Day Details Bar */}
+            {hoveredBar && (
+              <div className="daily-bar-selected-info">
+                <div className="selected-info-left">
+                  <span className="selected-info-pill">
+                    {hoveredBar.isToday ? (isSi ? '📌 අද දිනය' : '📌 Today') : `📅 ${hoveredBar.dateStr}`}
+                  </span>
+                  <span className="selected-day-name">{hoveredBar.dayName} ({hoveredBar.dayLabel})</span>
+                </div>
+                <div className="selected-info-right">
+                  <span className="selected-spend-label">{isSi ? 'එදින වියදම:' : 'Day Total:'}</span>
+                  <strong className="selected-spend-val">{currency} {hoveredBar.daySpent.toLocaleString()}</strong>
+                </div>
               </div>
             )}
           </div>

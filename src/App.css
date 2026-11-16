@@ -3181,6 +3181,34 @@
   cursor: pointer;
 }
 
+.bar-top-amount-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.bar-top-amount-label.has-spend {
+  color: #10b981;
+}
+
+.bar-top-amount-label.zero-spend {
+  color: var(--text-dim);
+  opacity: 0.45;
+}
+
+.bar-data-column.is-peak .bar-top-amount-label.has-spend {
+  color: #f87171;
+  font-weight: 800;
+}
+
+.bar-data-column.is-today .bar-top-amount-label {
+  color: #10b981;
+  font-weight: 800;
+}
+
 .bar-hover-popover {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -3282,6 +3310,57 @@
   background: var(--panel-bg);
   padding: 0.05rem 0.35rem;
   border-radius: 3px;
+}
+
+/* Selected Bar Info Bar */
+.daily-bar-selected-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.85rem;
+  padding: 0.55rem 0.85rem;
+  background: var(--panel-bg);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 0.75rem;
+  animation: toastFadeIn 0.2s ease;
+}
+
+.selected-info-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selected-info-pill {
+  font-size: 0.72rem;
+  font-weight: 750;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.12);
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.selected-day-name {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.selected-info-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.selected-spend-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.selected-spend-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #10b981;
 }
 
 /* 3-Column Smart Financial Insights Cards */
