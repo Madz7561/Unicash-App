@@ -344,3 +344,165 @@ export async function updateDebtRequestApi(requestId, updateData) {
     return false;
   }
 }
+
+// ================= ADMIN API FUNCTIONS =================
+
+// 11. Fetch all users along with their activity metadata from Firebase
+export async function fetchAllUsersAdminApi() {
+  try {
+    const [usersRes, userDataRes] = await Promise.all([
+      fetch(`${FIREBASE_BASE_URL}/users.json`),
+      fetch(`${FIREBASE_BASE_URL}/userData.json`),
+    ]);
+
+    let usersList = [];
+    if (usersRes.ok) {
+      const usersData = await safeJson(usersRes);
+      if (usersData) {
+        if (Array.isArray(usersData)) {
+          usersList = usersData.filter(Boolean);
+        } else {
+          usersList = Object.values(usersData).filter(Boolean);
+        }
+      }
+    }
+
+    let allUserData = {};
+    if (userDataRes.ok) {
+      const data = await safeJson(userDataRes);
+      if (data) allUserData = data;
+    }
+
+    // Merge metadata
+    return usersList.map(u => {
+      const ud = allUserData[u.id] || {};
+      const txs = Array.isArray(ud.transactions) ? ud.transactions : [];
+      const loans = Array.isArray(ud.loans) ? ud.loans : [];
+      const notes = Array.isArray(ud.notes) ? ud.notes : [];
+
+      // Calculate Cash & Bank balance
+      const cashIncome = txs.filter(t => t.type === 'income' && (t.account || 'cash') === 'cash').reduce((s, t) => s + Number(t.amount || 0), 0);
+      const cashExpense = txs.filter(t => t.type === 'expense' && (t.account || 'cash') === 'cash').reduce((s, t) => s + Number(t.amount || 0), 0);
+      const bankIncome = txs.filter(t => t.type === 'income' && t.account === 'bank').reduce((s, t) => s + Number(t.amount || 0), 0);
+      const bankExpense = txs.filter(t => t.type === 'expense' && t.account === 'bank').reduce((s, t) => s + Number(t.amount || 0), 0);
+
+      return {
+        ...u,
+        txCount: txs.length,
+        loansCount: loans.length,
+        notesCount: notes.length,
+        cashBalance: cashIncome - cashExpense,
+        bankBalance: bankIncome - bankExpense,
+        totalBalance: (cashIncome - cashExpense) + (bankIncome - bankExpense),
+        lastUpdated: ud.lastUpdated || u.createdAt || null,
+      };
+    });
+  } catch (err) {
+    console.error('Fetch all users admin error:', err);
+    return [];
+  }
+}
+
+// 12. Reset a user's password (Admin action)
+export async function resetUserPasswordAdminApi(userId, newPlainPassword) {
+  try {
+    const usersRes = await fetch(`${FIREBASE_BASE_URL}/users.json`);
+    if (!usersRes.ok) return { success: false, error: 'Failed to access database' };
+    const users = await safeJson(usersRes);
+    if (!users) return { success: false, error: 'User list empty' };
+
+    const newHash = await sha256Hex(String(newPlainPassword).trim());
+
+    if (Array.isArray(users)) {
+      const idx = users.findIndex(u => u && u.id === userId);
+      if (idx === -1) return { success: false, error: 'User not found' };
+      const res = await fetch(`${FIREBASE_BASE_URL}/users/${idx}/passwordHash.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newHash),
+      });
+      return { success: res.ok };
+    } else {
+      // Object mapping
+      const entry = Object.entries(users).find(([_, u]) => u && u.id === userId);
+      if (!entry) return { success: false, error: 'User not found' };
+      const [key] = entry;
+      const res = await fetch(`${FIREBASE_BASE_URL}/users/${key}/passwordHash.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newHash),
+      });
+      return { success: res.ok };
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// 13. Toggle user account suspension / status (Admin action)
+export async function toggleUserSuspensionAdminApi(userId, isSuspended) {
+  try {
+    const usersRes = await fetch(`${FIREBASE_BASE_URL}/users.json`);
+    if (!usersRes.ok) return false;
+    const users = await safeJson(usersRes);
+    if (!users) return false;
+
+    if (Array.isArray(users)) {
+      const idx = users.findIndex(u => u && u.id === userId);
+      if (idx === -1) return false;
+      const res = await fetch(`${FIREBASE_BASE_URL}/users/${idx}/isSuspended.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isSuspended),
+      });
+      return res.ok;
+    } else {
+      const entry = Object.entries(users).find(([_, u]) => u && u.id === userId);
+      if (!entry) return false;
+      const [key] = entry;
+      const res = await fetch(`${FIREBASE_BASE_URL}/users/${key}/isSuspended.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isSuspended),
+      });
+      return res.ok;
+    }
+  } catch (err) {
+    console.error('Toggle suspension error:', err);
+    return false;
+  }
+}
+
+// 14. Delete a user completely from database (Admin action)
+export async function deleteUserAdminApi(userId) {
+  try {
+    const usersRes = await fetch(`${FIREBASE_BASE_URL}/users.json`);
+    if (!usersRes.ok) return false;
+    const users = await safeJson(usersRes);
+    if (!users) return false;
+
+    // Filter out user and re-save users array/object
+    let newUsers = [];
+    if (Array.isArray(users)) {
+      newUsers = users.filter(u => u && u.id !== userId);
+    } else {
+      newUsers = Object.values(users).filter(u => u && u.id !== userId);
+    }
+
+    await Promise.all([
+      fetch(`${FIREBASE_BASE_URL}/users.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUsers),
+      }),
+      fetch(`${FIREBASE_BASE_URL}/userData/${userId}.json`, {
+        method: 'DELETE',
+      }),
+    ]);
+
+    return true;
+  } catch (err) {
+    console.error('Delete user admin error:', err);
+    return false;
+  }
+}
