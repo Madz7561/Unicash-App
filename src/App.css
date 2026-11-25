@@ -23,13 +23,26 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding: 0.85rem 1.15rem;
+  padding: 0.95rem 1.25rem;
   background: var(--panel-bg);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--panel-border);
-  border-radius: 1.25rem;
+  border-radius: 1.5rem;
   box-shadow: var(--card-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.simple-nav::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .nav-top-row {
@@ -48,16 +61,16 @@
 }
 
 .nav-app-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
   object-fit: cover;
 }
 
 .nav-brand-title {
-  font-size: 1.18rem;
-  font-weight: 800;
+  font-size: 1.22rem;
+  font-weight: 850;
   letter-spacing: -0.02em;
   color: var(--text-main);
 }
@@ -65,12 +78,13 @@
 /* Tabs: Full-width clean segmented control */
 .nav-tabs {
   display: flex;
-  background: var(--border-color);
-  padding: 0.3rem;
-  border-radius: 0.85rem;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.35rem;
+  border-radius: 1rem;
   gap: 0.35rem;
   width: 100%;
   box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .nav-tabs .tab-btn {
@@ -88,20 +102,25 @@
   background: transparent;
   color: var(--text-muted);
   font-size: 0.85rem;
-  font-weight: 700;
-  border-radius: 0.65rem;
+  font-weight: 750;
+  border-radius: 0.75rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.18s ease;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   min-height: 40px;
 }
 
 .tab-btn:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
 }
 
 .tab-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
   background: var(--panel-bg);
   color: var(--text-main);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -186,16 +205,23 @@
 
 /* 1. Hero Balance Card */
 .hero-balance-card {
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.92) 0%, rgba(17, 24, 39, 0.96) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 1.35rem;
-  padding: 1.6rem 1.5rem;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: rgba(18, 24, 38, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.5rem;
+  padding: 1.65rem 1.6rem;
+  box-shadow: 0 20px 45px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1rem;
   position: relative;
   overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-balance-card:hover {
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .light-theme .hero-balance-card {
@@ -207,13 +233,13 @@
 .hero-balance-card::after {
   content: '';
   position: absolute;
-  top: -30px;
-  right: -30px;
-  width: 140px;
-  height: 140px;
+  top: -40px;
+  right: -40px;
+  width: 180px;
+  height: 180px;
   background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
   pointer-events: none;
-  filter: blur(20px);
+  filter: blur(25px);
 }
 
 .hero-top-row {
@@ -6243,6 +6269,188 @@
   line-height: 1.35;
   margin-top: 0.25rem;
 }
+
+/* =========================================================
+   GLOBAL GLASSMORPHISM V35 UPGRADE ACROSS ALL APP TABS
+   ========================================================= */
+
+/* Glass Cards & Containers */
+.account-card,
+.transaction-input-section,
+.transactions-simple-card,
+.loans-header-card,
+.iou-stats-grid .iou-stat-card,
+.iou-filter-pills-bar,
+.iou-card,
+.notes-header-card,
+.note-editor-card,
+.note-item-card,
+.charts-card,
+.settings-section-card,
+.spending-limit-card,
+.auth-card,
+.mini-modal-card,
+.modal-card {
+  background: rgba(18, 24, 38, 0.72) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 1.4rem !important;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Card Hover Lifts */
+.account-card:hover,
+.iou-card:hover,
+.note-item-card:hover,
+.charts-card:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Dual Wallet Cash & Bank Glows */
+.cash-account-card:hover {
+  box-shadow: 0 20px 45px -10px rgba(16, 185, 129, 0.28), inset 0 1px 0 rgba(16, 185, 129, 0.3) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.bank-account-card:hover {
+  box-shadow: 0 20px 45px -10px rgba(56, 189, 248, 0.28), inset 0 1px 0 rgba(56, 189, 248, 0.3) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+}
+
+/* Glass Inputs & Form Controls */
+.input-group,
+.clean-box-input,
+.password-input-wrap,
+.clean-select,
+.search-box-minimal,
+.note-title-input,
+.note-body-textarea,
+.search-bar-input-wrap {
+  background: rgba(10, 15, 28, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.95rem !important;
+  backdrop-filter: blur(10px) !important;
+  color: #ffffff !important;
+  transition: all 0.2s ease !important;
+}
+
+.input-group:focus-within,
+.clean-box-input:focus,
+.clean-select:focus,
+.search-box-minimal:focus-within,
+.note-title-input:focus,
+.note-body-textarea:focus {
+  border-color: rgba(168, 85, 247, 0.55) !important;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.25) !important;
+}
+
+/* Glass Transaction Items */
+.simple-tx-item {
+  background: rgba(255, 255, 255, 0.035) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 1rem !important;
+  padding: 0.75rem 0.95rem !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.simple-tx-item:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateX(4px) !important;
+}
+
+/* Quick Filter Pills & Chips */
+.simple-chip,
+.chip-quick-transfer,
+.iou-filter-pill,
+.tx-filter-pill,
+.compact-preset-pill {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 999px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  transition: all 0.2s ease !important;
+}
+
+.simple-chip:hover,
+.chip-quick-transfer:hover,
+.iou-filter-pill:hover,
+.tx-filter-pill:hover,
+.compact-preset-pill:hover {
+  background: rgba(99, 102, 241, 0.25) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
+}
+
+.iou-filter-pill.active,
+.tx-filter-pill.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.35)) !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3) !important;
+}
+
+/* Glass Buttons with Gradient Glow */
+.btn-add-submit,
+.btn-income-submit,
+.btn-auth-submit,
+.btn-modal-confirm,
+.btn-add-loan-primary {
+  border-radius: 0.95rem !important;
+  font-weight: 800 !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+.btn-add-submit:hover,
+.btn-income-submit:hover,
+.btn-auth-submit:hover,
+.btn-modal-confirm:hover,
+.btn-add-loan-primary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 25px -4px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Debts / IOUs Stats Grid Glass Lifts */
+.iou-stats-grid .iou-stat-card {
+  padding: 1.15rem !important;
+  border-radius: 1.25rem !important;
+}
+
+.iou-stats-grid .iou-stat-card:hover {
+  transform: translateY(-4px) !important;
+}
+
+.iou-stats-grid .card-lent:hover {
+  border-color: rgba(52, 211, 153, 0.5) !important;
+  box-shadow: 0 15px 35px -8px rgba(16, 185, 129, 0.3) !important;
+}
+
+.iou-stats-grid .card-borrowed:hover {
+  border-color: rgba(248, 113, 113, 0.5) !important;
+  box-shadow: 0 15px 35px -8px rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Glass Floating Modals */
+.mini-modal-overlay,
+.modal-overlay {
+  background: rgba(4, 7, 14, 0.75) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+.mini-modal-card,
+.modal-card {
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
 
 
 
