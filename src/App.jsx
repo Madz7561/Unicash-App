@@ -146,6 +146,34 @@ export default function App() {
   // Privacy blur toggle for account balances (hidden by default on entry)
   const [showBalances, setShowBalances] = useState(false);
 
+  // Quick Expense Widget Mode (?quick=1 for Android & iOS Home/Lock Screen Widgets)
+  const [isQuickWidgetOpen, setIsQuickWidgetOpen] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      return p.get('quick') === '1' || p.get('quick') === 'true';
+    } catch { return false; }
+  });
+  const [quickWidgetAmount, setQuickWidgetAmount] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('amount') || '';
+    } catch { return ''; }
+  });
+  const [quickWidgetCategory, setQuickWidgetCategory] = useState(() => {
+    try {
+      const c = new URLSearchParams(window.location.search).get('cat');
+      return c && CATEGORIES[c] ? c : 'lunch';
+    } catch { return 'lunch'; }
+  });
+  const [quickWidgetAccount, setQuickWidgetAccount] = useState('cash');
+  const [quickWidgetNote, setQuickWidgetNote] = useState('');
+  const [quickWidgetSavedMsg, setQuickWidgetSavedMsg] = useState('');
+  const [widgetGuidePlatform, setWidgetGuidePlatform] = useState(() => {
+    try {
+      return /android/i.test(navigator.userAgent) ? 'android' : 'ios';
+    } catch { return 'ios'; }
+  });
+  const [copiedWidgetUrl, setCopiedWidgetUrl] = useState(false);
+
   // Input form state (Expenses / Cash additions)
   const [entryType, setEntryType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -642,6 +670,48 @@ export default function App() {
     showToast(entryType === 'expense' 
       ? `Spent ${currency} ${amt.toLocaleString()} via ${isBank ? '🏦 Bank' : '💵 Cash'}` 
       : `Added ${currency} ${amt.toLocaleString()} to ${isBank ? '🏦 Bank' : '💵 Cash'}`);
+  };
+
+  const closeQuickWidget = () => {
+    setIsQuickWidgetOpen(false);
+    setQuickWidgetSavedMsg('');
+    try {
+      if (window.location.search.includes('quick=')) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch {}
+  };
+
+  const handleQuickWidgetSave = (e) => {
+    e.preventDefault();
+    const amt = parseFloat(quickWidgetAmount);
+    if (isNaN(amt) || amt <= 0) return;
+
+    const cat = CATEGORIES[quickWidgetCategory] || CATEGORIES.other;
+    const acc = quickWidgetCategory === 'reload' ? 'bank' : quickWidgetAccount;
+    const finalNote = quickWidgetNote.trim() || (isSi ? cat.nameSi : cat.nameEn);
+
+    const newTx = {
+      id: 'tx-' + Date.now(),
+      type: 'expense',
+      amount: amt,
+      account: acc,
+      category: quickWidgetCategory,
+      date: todayStr,
+      note: finalNote,
+    };
+
+    const updated = [newTx, ...transactions];
+    setTransactions(updated);
+    saveUserData(updated, settings, loans, notes);
+    setQuickWidgetAmount('');
+    setQuickWidgetNote('');
+    const msg = isSi
+      ? `✅ සුරකින ලදී: ${finalNote} (${currency} ${amt.toLocaleString()})`
+      : `✅ Saved: ${finalNote} (${currency} ${amt.toLocaleString()})`;
+    setQuickWidgetSavedMsg(msg);
+    showToast(msg);
+    setTimeout(() => setQuickWidgetSavedMsg(''), 3000);
   };
 
   const handleQuickExpense = (item) => {
@@ -1476,14 +1546,21 @@ export default function App() {
                 )}
               </div>
 
-              {/* iPhone Connect Button */}
+              {/* Quick Widget & Phone Connect Button */}
+              <button
+                onClick={() => setIsQuickWidgetOpen(true)}
+                className="icon-btn-minimal"
+                title={isSi ? 'ඉක්මන් වියදම් Widget' : 'Quick Expense Widget'}
+              >
+                ⚡
+              </button>
               <button
                 onClick={() => setIsPhoneModalOpen(true)}
                 className="btn-connect-phone"
-                title={isSi ? 'iPhone එකට සම්බන්ධ කරන්න' : 'Connect iPhone'}
+                title={isSi ? 'Phone Widget & App සැකසුම' : 'Phone Widget & App Setup'}
               >
                 <Smartphone size={15} />
-                <span className="hide-on-xs">iPhone</span>
+                <span className="hide-on-xs">Widget</span>
                 <span className={`sync-indicator-dot ${syncStatus}`} />
               </button>
 
@@ -3965,51 +4042,121 @@ export default function App() {
         </div>
       )}
 
-      {/* ================= IPHONE CONNECT MODAL ================= */}
+      {/* ================= PHONE WIDGET & APP SETUP MODAL (ANDROID & IOS) ================= */}
       {isPhoneModalOpen && (
         <div className="mini-modal-overlay" onClick={() => setIsPhoneModalOpen(false)}>
           <div className="mini-modal-card iphone-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-title-row">
               <div className="title-with-icon">
                 <Smartphone size={22} className="text-accent" />
-                <h4>{isSi ? 'iPhone එකෙන් භාවිතා කරන්න' : 'Open on iPhone'}</h4>
+                <h4>{isSi ? 'Phone Widget & App (Android / iOS)' : 'Phone Widget & App Setup'}</h4>
               </div>
               <button onClick={() => setIsPhoneModalOpen(false)} className="btn-modal-close">✕</button>
             </div>
 
             <p className="modal-help">
               {isSi
-                ? 'ඔබගේ යාලුවන්ටත් මෙම Link එක දී තමන්ගේම Username & Password එකක් සාදාගෙන පෞද්ගලිකව වියදම් පාලනය කළ හැක:'
-                : 'Share this link with your friends so they can create their own private accounts with Username & Password:'}
+                ? 'ඔබගේ Android හෝ iPhone Home Screen එකට ඉක්මන් වියදම් (Quick Expense) Widget එකක් ලෙස මෙය එකතු කරගන්න:'
+                : 'Add UniCash as a 1-Tap Quick Expense Widget on your Android or iPhone Home Screen:'}
             </p>
 
-            {/* App Icon Preview */}
-            <div className="ios-icon-preview-card">
-              <img src="/apple-touch-icon.png" alt="UniCash iOS App Icon" className="ios-preview-squircle" />
-              <div className="ios-preview-desc">
-                <strong>{isSi ? 'UniCash iPhone App Icon' : 'UniCash iOS App Icon'}</strong>
-                <p>{isSi ? 'Home Screen එකට Add කළ පසු මෙම ලස්සන 3D Icon එක දිස්වේ' : 'This 3D icon will appear on your iPhone Home Screen'}</p>
-              </div>
+            {/* Quick Widget Direct URL */}
+            <div className="link-section-title">
+              ⚡ {isSi ? 'Quick Expense Widget Link එක:' : 'Quick Expense Widget URL:'}
+            </div>
+            <div className="direct-link-box highlight-online">
+              <span className="link-text">{onlineUrl}/?quick=1</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${onlineUrl}/?quick=1`);
+                  setCopiedWidgetUrl(true);
+                  setTimeout(() => setCopiedWidgetUrl(false), 2000);
+                }}
+                className="btn-copy-link"
+              >
+                {copiedWidgetUrl ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedWidgetUrl ? (isSi ? 'පිටපත් විය' : 'Copied') : (isSi ? 'Copy' : 'Copy')}</span>
+              </button>
             </div>
 
-            {/* QR Code */}
-            <div className="qr-container">
+            <button
+              type="button"
+              onClick={() => {
+                setIsPhoneModalOpen(false);
+                setIsQuickWidgetOpen(true);
+              }}
+              className="btn-test-widget"
+            >
+              ⚡ {isSi ? 'දැන්ම Quick Widget එක පරීක්ෂා කරන්න' : 'Open Quick Expense Widget Now'}
+            </button>
+
+            {/* Platform Switcher: iOS vs Android */}
+            <div className="widget-platform-tabs">
+              <button
+                type="button"
+                className={`widget-platform-btn ${widgetGuidePlatform === 'ios' ? 'active' : ''}`}
+                onClick={() => setWidgetGuidePlatform('ios')}
+              >
+                🍎 iPhone (iOS)
+              </button>
+              <button
+                type="button"
+                className={`widget-platform-btn ${widgetGuidePlatform === 'android' ? 'active' : ''}`}
+                onClick={() => setWidgetGuidePlatform('android')}
+              >
+                🤖 Android
+              </button>
+            </div>
+
+            {widgetGuidePlatform === 'ios' ? (
+              <div className="ios-instructions-box">
+                <h5>{isSi ? '🍎 iPhone Home / Lock Screen Widget සාදන ආකාරය:' : '🍎 Add iOS Home / Lock Screen Widget:'}</h5>
+                <ol className="ios-steps-list">
+                  <li>
+                    {isSi ? 'iPhone එකේ ' : 'Open the '} <strong>Shortcuts</strong> {isSi ? 'App එක open කරන්න → (+) ඔබන්න.' : 'app → Tap (+).'}
+                  </li>
+                  <li>
+                    <strong>"Open URLs"</strong> {isSi ? 'තෝරා ඉහත Quick Widget Link එක paste කරන්න.' : 'action → Paste the Quick Widget URL above.'}
+                  </li>
+                  <li>
+                    {isSi ? 'Home Screen හෝ Lock Screen long-press කර ' : 'Long-press Home/Lock Screen → Add Widget → '} <strong>Shortcuts</strong> {isSi ? 'Widget එක දාගන්න!' : 'widget!'}
+                  </li>
+                  <li>
+                    {isSi ? 'නැතිනම් Safari හි Share → ' : 'Or in Safari: Share → '} <strong>"Add to Home Screen"</strong> {isSi ? 'මගින් 1-Tap Icon එකක් දාගන්න.' : 'for a 1-tap Quick Add icon.'}
+                  </li>
+                </ol>
+              </div>
+            ) : (
+              <div className="ios-instructions-box">
+                <h5>{isSi ? '🤖 Android Widget & Shortcuts සාදන ආකාරය:' : '🤖 Add Android Home Screen Widget & Shortcuts:'}</h5>
+                <ol className="ios-steps-list">
+                  <li>
+                    {isSi ? 'Chrome එකෙන් ඉහත Quick Widget Link එක open කරන්න.' : 'Open the Quick Widget URL above in Chrome.'}
+                  </li>
+                  <li>
+                    {isSi ? 'දකුණු උඩ ඇති ⋮ Menu → ' : 'Tap ⋮ Menu → '} <strong>"Add to Home screen"</strong> {isSi ? 'තෝරා "Quick Expense" ලෙස Save කරන්න.' : '→ Save as "Quick Expense" widget icon.'}
+                  </li>
+                  <li>
+                    {isSi ? 'සම්පූර්ණ App එක Install කළ පසු, Icon එක Long-Press කර ' : 'When full app is installed, long-press the UniCash icon for '} <strong>Quick Add / Lunch / Breakfast / Bus</strong> {isSi ? 'shortcuts ගන්න පුළුවන්!' : 'shortcuts!'}
+                  </li>
+                </ol>
+              </div>
+            )}
+
+            {/* Full App QR & Link */}
+            <div className="qr-container" style={{ marginTop: '0.75rem' }}>
               <img
                 src={qrCodeUrl}
                 alt="QR Code"
                 className="qr-img"
               />
               <span className="qr-caption">
-                📷 {isSi ? 'iPhone Camera එකෙන් Scan කරන්න' : 'Scan with iPhone Camera'}
+                📷 {isSi ? 'Phone Camera එකෙන් Scan කරන්න' : 'Scan with Phone Camera'}
               </span>
             </div>
 
-            {/* Online Global Public Link */}
-            <div className="link-section-title">
-              🌐 {isSi ? 'Online Web Link එක (ලෝකයේ ඕනෑම තැනක සිට)' : 'Online Web Link (Anywhere via Internet)'}:
-            </div>
-            <div className="direct-link-box highlight-online">
-              <span className="link-text">{onlineUrl}</span>
+            <div className="direct-link-box subtle-local">
+              <span className="link-text-subtle">Full App: {onlineUrl}</span>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(onlineUrl);
@@ -4018,30 +4165,8 @@ export default function App() {
                 }}
                 className="btn-copy-link"
               >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copied ? (isSi ? 'පිටපත් විය' : 'Copied') : (isSi ? 'Copy' : 'Copy')}</span>
+                {copied ? <Check size={13} /> : <Copy size={13} />}
               </button>
-            </div>
-
-            {/* Direct Local Hotspot Link */}
-            <div className="direct-link-box subtle-local">
-              <span className="link-text-subtle">Local: {networkInfo.url}</span>
-            </div>
-
-            {/* iOS Add to Home Screen Instructions */}
-            <div className="ios-instructions-box">
-              <h5>{isSi ? '💡 iPhone එකේ App එකක් ලෙස තබා ගැනීමට:' : '💡 Add as an App on iPhone Home Screen:'}</h5>
-              <ol className="ios-steps-list">
-                <li>
-                  {isSi ? 'Safari බ්‍රවුසරයෙන් link එක Open කරන්න.' : 'Open the link in Safari.'}
-                </li>
-                <li>
-                  {isSi ? 'පහළ ඇති ' : 'Tap the '} <strong>Share ( <Share2 size={13} className="inline-icon" /> )</strong> {isSi ? 'බොත්තම ඔබන්න.' : 'button at the bottom.'}
-                </li>
-                <li>
-                  <strong>"Add to Home Screen"</strong> {isSi ? 'තෝරන්න.' : 'to save as an app icon.'}
-                </li>
-              </ol>
             </div>
 
             <div className="modal-actions-row">
@@ -4050,6 +4175,128 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ================= QUICK EXPENSE WIDGET OVERLAY (?quick=1) ================= */}
+      {isQuickWidgetOpen && (
+        <div className="quick-widget-overlay">
+          <form className="quick-widget-card" onSubmit={handleQuickWidgetSave}>
+            <div className="quick-widget-header">
+              <div className="quick-widget-brand">
+                <img src="/app-icon.png" alt="UniCash" />
+                <div>
+                  <div className="quick-widget-title">⚡ {isSi ? 'ඉක්මන් වියදම් Widget' : 'Quick Expense'}</div>
+                  <div className="quick-widget-sub">@{currentUser.username} • {todayStr}</div>
+                </div>
+              </div>
+              <button type="button" onClick={closeQuickWidget} className="btn-modal-close" title="Open Full App">
+                ✕
+              </button>
+            </div>
+
+            {quickWidgetSavedMsg && (
+              <div className="quick-widget-saved-banner">{quickWidgetSavedMsg}</div>
+            )}
+
+            {/* Amount Input */}
+            <div className="quick-widget-amount-wrap">
+              <span className="quick-widget-currency">{currency}</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="1"
+                autoFocus
+                placeholder="0"
+                value={quickWidgetAmount}
+                onChange={e => setQuickWidgetAmount(e.target.value)}
+                className="quick-widget-amount-input"
+                required
+              />
+            </div>
+
+            {/* Quick Amount Chips */}
+            <div className="quick-widget-amount-chips">
+              {[50, 100, 150, 200, 300, 500, 1000].map(val => (
+                <button
+                  key={val}
+                  type="button"
+                  className="quick-amt-chip"
+                  onClick={() => setQuickWidgetAmount(String(val))}
+                >
+                  {val}
+                </button>
+              ))}
+            </div>
+
+            {/* 1-Tap Category Grid */}
+            <div className="quick-widget-cat-grid">
+              {[
+                { id: 'breakfast', badge: '🍳', en: 'Breakfast', si: 'උදෑසන' },
+                { id: 'lunch', badge: '🍛', en: 'Lunch', si: 'දවල්' },
+                { id: 'dinner', badge: '🌙', en: 'Dinner', si: 'රාත්‍රී' },
+                { id: 'transport', badge: '🚌', en: 'Bus', si: 'බස්' },
+                { id: 'entertainment', badge: '☕', en: 'Tea', si: 'තේ' },
+                { id: 'food', badge: '🍔', en: 'Snack', si: 'කෑම' },
+                { id: 'reload', badge: '📱', en: 'Reload', si: 'රිලෝඩ්' },
+                { id: 'other', badge: '💡', en: 'Other', si: 'වෙනත්' },
+              ].map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setQuickWidgetCategory(c.id);
+                    if (c.id === 'reload') setQuickWidgetAccount('bank');
+                  }}
+                  className={`quick-cat-btn ${quickWidgetCategory === c.id ? 'active' : ''}`}
+                >
+                  <span className="quick-cat-emoji">{c.badge}</span>
+                  <span>{isSi ? c.si : c.en}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Cash vs Bank */}
+            <div className="quick-widget-row">
+              <button
+                type="button"
+                onClick={() => setQuickWidgetAccount('cash')}
+                className={`quick-acc-pill ${quickWidgetAccount === 'cash' ? 'active-cash' : ''}`}
+              >
+                💵 {isSi ? 'අතේ මුදල් (Cash)' : 'Cash in Hand'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickWidgetAccount('bank')}
+                className={`quick-acc-pill ${quickWidgetAccount === 'bank' ? 'active-bank' : ''}`}
+              >
+                🏦 {isSi ? 'බැංකු (Bank)' : 'Bank'}
+              </button>
+            </div>
+
+            {/* Optional Note */}
+            <input
+              type="text"
+              placeholder={isSi ? 'විස්තරයක් (අවශ්‍ය නම් පමණි)...' : 'Note (optional)...'}
+              value={quickWidgetNote}
+              onChange={e => setQuickWidgetNote(e.target.value)}
+              className="quick-widget-note"
+            />
+
+            <button type="submit" className="quick-widget-save-btn">
+              ⚡ {isSi ? 'වියදම සුරකින්න (Save)' : 'Save Expense'}
+            </button>
+
+            <button
+              type="button"
+              onClick={closeQuickWidget}
+              className="btn-modal-close"
+              style={{ width: '100%', padding: '0.45rem', borderRadius: '0.75rem', fontSize: '0.78rem' }}
+            >
+              {isSi ? 'සම්පූර්ණ App එකට යන්න →' : 'Open Full App →'}
+            </button>
+          </form>
         </div>
       )}
 
