@@ -2,7 +2,7 @@
 
 .simple-app {
   min-height: 100vh;
-  padding: 1.5rem 1rem 3rem 1rem;
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1rem calc(3rem + env(safe-area-inset-bottom, 0px)) 1rem;
   display: flex;
   justify-content: center;
   background: var(--bg-gradient);
@@ -1578,7 +1578,17 @@
 /* Responsive */
 @media (max-width: 600px) {
   .simple-app {
-    padding: 0.75rem 0.5rem;
+    padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 0.6rem calc(2rem + env(safe-area-inset-bottom, 0px)) 0.6rem;
+  }
+
+  .nav-actions {
+    gap: 0.3rem;
+  }
+
+  .nav-actions .icon-btn-minimal {
+    width: 30px;
+    height: 30px;
+    font-size: 0.72rem;
   }
   
   .simple-nav {
