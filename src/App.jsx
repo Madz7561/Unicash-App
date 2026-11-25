@@ -141,8 +141,10 @@ export default function App() {
   const [noteFilter, setNoteFilter] = useState('all'); // 'all' | 'active' | 'debt' | 'reminder' | 'done'
   const [noteSearch, setNoteSearch] = useState('');
 
-  // Active navigation tab: 'wallet' | 'loans' | 'analytics' | 'settings'
+  // Active navigation tab: 'wallet' | 'history' | 'loans' | 'analytics' | 'settings'
   const [activeTab, setActiveTab] = useState('wallet');
+  // Privacy blur toggle for account balances (hidden by default on entry)
+  const [showBalances, setShowBalances] = useState(false);
 
   // Input form state (Expenses / Cash additions)
   const [entryType, setEntryType] = useState('expense');
@@ -1427,10 +1429,23 @@ export default function App() {
               <span className="pill-dot" />
               <span>{todayStr}</span>
               <span>•</span>
-              <span>{isSi ? 'අද:' : 'Today:'} <span className="pill-spend">-{currency} {todaySpent.toLocaleString()}</span></span>
+              <span>
+                {isSi ? 'අද:' : 'Today:'}{' '}
+                <span className={`pill-spend ${showBalances ? 'balance-visible' : 'balance-blurred'}`}>
+                  -{currency} {todaySpent.toLocaleString()}
+                </span>
+              </span>
             </div>
 
             <div className="nav-actions">
+              <button
+                type="button"
+                onClick={() => setShowBalances(prev => !prev)}
+                className={`icon-btn-minimal ${showBalances ? 'active' : ''}`}
+                title={showBalances ? (isSi ? 'ශේෂය සඟවන්න' : 'Hide Balances') : (isSi ? 'ශේෂය පෙන්වන්න' : 'Show Balances')}
+              >
+                {showBalances ? <Eye size={16} /> : <EyeOff size={16} />}
+              </button>
               {/* User Profile Switcher Dropdown */}
               <div className="user-dropdown-wrap">
                 <button
@@ -1579,8 +1594,18 @@ export default function App() {
                     </div>
                   </div>
                   <div className="total-net-amount">
+                    <button
+                      type="button"
+                      onClick={() => setShowBalances(prev => !prev)}
+                      className={`btn-eye-toggle ${showBalances ? 'active' : ''}`}
+                      title={showBalances ? (isSi ? 'ශේෂය සඟවන්න' : 'Hide Balances') : (isSi ? 'ශේෂය පෙන්වන්න' : 'Show Balances')}
+                    >
+                      {showBalances ? <Eye size={17} /> : <EyeOff size={17} />}
+                    </button>
                     <span className="currency-mark">{currency}</span>
-                    <span className="total-net-val">{totalBalance.toLocaleString()}</span>
+                    <span className={`total-net-val ${showBalances ? 'balance-visible' : 'balance-blurred'}`}>
+                      {totalBalance.toLocaleString()}
+                    </span>
                   </div>
                 </div>
 
@@ -1588,12 +1613,16 @@ export default function App() {
                   <div className="breakdown-pill cash-pill">
                     <span className="pill-dot dot-cash"></span>
                     <span className="breakdown-label">{isSi ? 'අතේ මුදල්:' : 'Cash:'}</span>
-                    <strong className="breakdown-val">{currency} {cashBalance.toLocaleString()}</strong>
+                    <strong className={`breakdown-val ${showBalances ? 'balance-visible' : 'balance-blurred'}`}>
+                      {currency} {cashBalance.toLocaleString()}
+                    </strong>
                   </div>
                   <div className="breakdown-pill bank-pill">
                     <span className="pill-dot dot-bank"></span>
                     <span className="breakdown-label">{isSi ? 'බැංකුව:' : 'Bank:'}</span>
-                    <strong className="breakdown-val">{currency} {bankBalance.toLocaleString()}</strong>
+                    <strong className={`breakdown-val ${showBalances ? 'balance-visible' : 'balance-blurred'}`}>
+                      {currency} {bankBalance.toLocaleString()}
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -1627,7 +1656,7 @@ export default function App() {
 
                   <div className="acc-card-amount">
                     <span className="currency-mark-sub">{currency}</span>
-                    <span className={`acc-amount-val ${cashBalance < 500 ? 'text-danger-warn' : ''}`}>
+                    <span className={`acc-amount-val ${cashBalance < 500 ? 'text-danger-warn' : ''} ${showBalances ? 'balance-visible' : 'balance-blurred'}`}>
                       {cashBalance.toLocaleString()}
                     </span>
                   </div>
@@ -1678,7 +1707,7 @@ export default function App() {
 
                   <div className="acc-card-amount">
                     <span className="currency-mark-sub">{currency}</span>
-                    <span className="acc-amount-val bank-color">
+                    <span className={`acc-amount-val bank-color ${showBalances ? 'balance-visible' : 'balance-blurred'}`}>
                       {bankBalance.toLocaleString()}
                     </span>
                   </div>
