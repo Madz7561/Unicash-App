@@ -1130,6 +1130,47 @@ export default function App() {
     return noteMatch || amtMatch || catMatch || accMatch;
   });
 
+  // Group filtered transactions day-by-day (newest day first)
+  const yesterdayStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return getLocalDateString(d);
+  }, [todayStr]);
+
+  const formatDayLabel = (dateKey) => {
+    if (!dateKey) return isSi ? 'දිනයක් නැත' : 'Unknown Date';
+    if (dateKey === todayStr) return isSi ? `අද (Today) • ${dateKey}` : `Today • ${dateKey}`;
+    if (dateKey === yesterdayStr) return isSi ? `ඊයේ (Yesterday) • ${dateKey}` : `Yesterday • ${dateKey}`;
+    try {
+      const [y, m, d] = dateKey.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      const formatted = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return `${formatted} • ${dateKey}`;
+    } catch {
+      return dateKey;
+    }
+  };
+
+  const groupedByDate = useMemo(() => {
+    const map = {};
+    filtered.forEach(t => {
+      const key = t.date || todayStr;
+      if (!map[key]) map[key] = [];
+      map[key].push(t);
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([dateKey, items]) => {
+        const dayExpense = items
+          .filter(t => t.type === 'expense' && !isTransferTx(t))
+          .reduce((s, t) => s + Number(t.amount || 0), 0);
+        const dayIncome = items
+          .filter(t => t.type === 'income' && !isTransferTx(t))
+          .reduce((s, t) => s + Number(t.amount || 0), 0);
+        return { dateKey, items, dayExpense, dayIncome };
+      });
+  }, [filtered, todayStr]);
+
   // Filtered loans for Debts tab
   const filteredLoans = loans
     .filter(l => {
@@ -1382,6 +1423,13 @@ export default function App() {
               </div>
             </div>
 
+            <div className="nav-center-pill" title={isSi ? 'අද දිනය සහ වියදම' : "Today's Date & Spend"}>
+              <span className="pill-dot" />
+              <span>{todayStr}</span>
+              <span>•</span>
+              <span>{isSi ? 'අද:' : 'Today:'} <span className="pill-spend">-{currency} {todaySpent.toLocaleString()}</span></span>
+            </div>
+
             <div className="nav-actions">
               {/* User Profile Switcher Dropdown */}
               <div className="user-dropdown-wrap">
@@ -1457,6 +1505,13 @@ export default function App() {
             >
               <Wallet size={16} />
               <span>{isSi ? 'මුදල්' : 'Wallet'}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+            >
+              <Receipt size={16} />
+              <span>{isSi ? 'ගනුදෙනු' : 'History'}</span>
             </button>
             <button
               onClick={() => setActiveTab('loans')}
@@ -2169,11 +2224,37 @@ export default function App() {
               </div>
             </section>
 
-            {/* 3. Clean Transaction History */}
+            {/* Quick Link to Dedicated History Tab */}
+            <div className="wallet-history-cta" onClick={() => setActiveTab('history')}>
+              <div className="wallet-history-cta-left">
+                <div className="wallet-history-cta-icon">
+                  <Receipt size={18} />
+                </div>
+                <div>
+                  <div className="wallet-history-cta-title">
+                    {isSi ? 'ගනුදෙනු ඉතිහාසය (History)' : 'Transaction History'}
+                  </div>
+                  <div className="wallet-history-cta-sub">
+                    {isSi
+                      ? `මුළු ගනුදෙනු ${transactions.length} ක් දිනෙන් දින වෙන්කර ඇත`
+                      : `${transactions.length} transactions grouped day by day`}
+                  </div>
+                </div>
+              </div>
+              <span className="wallet-history-cta-btn">
+                {isSi ? 'බලන්න →' : 'View All →'}
+              </span>
+            </div>
+          </main>
+        )}
+
+        {/* ================= TAB 1B: DAY-BY-DAY TRANSACTION HISTORY ================= */}
+        {activeTab === 'history' && (
+          <main className="tab-content">
             <section className="transactions-simple-card">
               <div className="list-header-row">
                 <div className="tx-header-title-group">
-                  <h3>{isSi ? 'ගනුදෙනු ලැයිස්තුව (History)' : 'Recent Transactions'}</h3>
+                  <h3>{isSi ? 'දිනෙන් දින ගනුදෙනු (History)' : 'Transaction History'}</h3>
                   <span className="tx-count-badge">{filtered.length} {isSi ? 'ගනුදෙනු' : 'items'}</span>
                 </div>
                 
@@ -2253,65 +2334,86 @@ export default function App() {
                 })}
               </div>
 
-              {filtered.length === 0 ? (
+              {groupedByDate.length === 0 ? (
                 <div className="empty-simple">
                   <p>{isSi ? 'මෙම කාණ්ඩයේ ගනුදෙනු කිසිවක් නැත' : 'No transactions found in this filter'}</p>
                 </div>
               ) : (
-                <div className="simple-tx-list">
-                  {filtered.map(t => {
-                    const isIncome = t.type === 'income';
-                    const effCat = getEffectiveCategory(t);
-                    const cat = CATEGORIES[effCat] || CATEGORIES.other;
-                    const isBankAcc = t.account === 'bank';
-                    const isTransfer = isTransferTx(t);
-                    return (
-                      <div key={t.id} className="simple-tx-item">
-                        <div className="tx-left-col">
-                          <div
-                            className={`tx-cat-circle ${isTransfer ? 'circle-transfer' : isIncome && effCat !== 'borrowed' ? 'circle-income' : ''}`}
-                            style={{
-                              backgroundColor: isTransfer ? 'rgba(14, 165, 233, 0.15)' : isIncome && effCat !== 'borrowed' ? 'rgba(16, 185, 129, 0.15)' : cat.bgColor,
-                              color: isTransfer ? '#0ea5e9' : isIncome && effCat !== 'borrowed' ? '#10b981' : cat.color,
-                            }}
-                          >
-                            {isTransfer ? <ArrowLeftRight size={15} /> : isIncome && effCat !== 'borrowed' ? <ArrowUpRight size={16} /> : <CategoryIcon categoryId={effCat} size={15} />}
-                          </div>
-                          <div>
-                            <div className="tx-item-title-row">
-                              <span className="tx-item-title">{t.note}</span>
-                              <span
-                                className="tx-category-tag"
-                                style={{
-                                  backgroundColor: isTransfer ? 'rgba(14, 165, 233, 0.15)' : cat.bgColor,
-                                  color: isTransfer ? '#0ea5e9' : cat.color,
-                                }}
-                              >
-                                {isTransfer ? '🔄' : cat.badge} {isTransfer ? (isSi ? 'මාරුවීමක්' : 'Transfer') : (isSi ? cat.nameSi : cat.nameEn)}
-                              </span>
-                              <span className={`tx-account-tag ${isBankAcc ? 'acc-bank-tag' : 'acc-cash-tag'}`}>
-                                {isBankAcc ? '🏦 Bank' : '💵 Cash'}
-                              </span>
-                            </div>
-                            <div className="tx-item-date">{t.date}</div>
-                          </div>
+                <div className="day-groups-container">
+                  {groupedByDate.map(group => (
+                    <div key={group.dateKey} className="day-group-block">
+                      <div className="day-group-header">
+                        <div className="day-group-title-wrap">
+                          <span className="day-group-badge">📅 {formatDayLabel(group.dateKey)}</span>
+                          <span className="day-group-count">{group.items.length}</span>
                         </div>
-
-                        <div className="tx-right-col">
-                          <span className={`tx-price ${isTransfer ? 'transfer-color' : isIncome ? 'income-color' : ''}`}>
-                            {isTransfer ? (isIncome ? '+' : '-') : isIncome ? '+' : '-'}{currency} {Number(t.amount).toLocaleString()}
-                          </span>
-                          <button
-                            onClick={() => handleDelete(t.id)}
-                            className="btn-trash-min"
-                            title="Delete"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                        <div className="day-summary-pills">
+                          {group.dayIncome > 0 && (
+                            <span className="day-pill-income">+{currency} {group.dayIncome.toLocaleString()}</span>
+                          )}
+                          {group.dayExpense > 0 && (
+                            <span className="day-pill-expense">-{currency} {group.dayExpense.toLocaleString()}</span>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
+
+                      <div className="simple-tx-list">
+                        {group.items.map(t => {
+                          const isIncome = t.type === 'income';
+                          const effCat = getEffectiveCategory(t);
+                          const cat = CATEGORIES[effCat] || CATEGORIES.other;
+                          const isBankAcc = t.account === 'bank';
+                          const isTransfer = isTransferTx(t);
+                          return (
+                            <div key={t.id} className="simple-tx-item">
+                              <div className="tx-left-col">
+                                <div
+                                  className={`tx-cat-circle ${isTransfer ? 'circle-transfer' : isIncome && effCat !== 'borrowed' ? 'circle-income' : ''}`}
+                                  style={{
+                                    backgroundColor: isTransfer ? 'rgba(14, 165, 233, 0.15)' : isIncome && effCat !== 'borrowed' ? 'rgba(16, 185, 129, 0.15)' : cat.bgColor,
+                                    color: isTransfer ? '#0ea5e9' : isIncome && effCat !== 'borrowed' ? '#10b981' : cat.color,
+                                  }}
+                                >
+                                  {isTransfer ? <ArrowLeftRight size={15} /> : isIncome && effCat !== 'borrowed' ? <ArrowUpRight size={16} /> : <CategoryIcon categoryId={effCat} size={15} />}
+                                </div>
+                                <div>
+                                  <div className="tx-item-title-row">
+                                    <span className="tx-item-title">{t.note}</span>
+                                    <span
+                                      className="tx-category-tag"
+                                      style={{
+                                        backgroundColor: isTransfer ? 'rgba(14, 165, 233, 0.15)' : cat.bgColor,
+                                        color: isTransfer ? '#0ea5e9' : cat.color,
+                                      }}
+                                    >
+                                      {isTransfer ? '🔄' : cat.badge} {isTransfer ? (isSi ? 'මාරුවීමක්' : 'Transfer') : (isSi ? cat.nameSi : cat.nameEn)}
+                                    </span>
+                                    <span className={`tx-account-tag ${isBankAcc ? 'acc-bank-tag' : 'acc-cash-tag'}`}>
+                                      {isBankAcc ? '🏦 Bank' : '💵 Cash'}
+                                    </span>
+                                  </div>
+                                  <div className="tx-item-date">{t.date}</div>
+                                </div>
+                              </div>
+
+                              <div className="tx-right-col">
+                                <span className={`tx-price ${isTransfer ? 'transfer-color' : isIncome ? 'income-color' : ''}`}>
+                                  {isTransfer ? (isIncome ? '+' : '-') : isIncome ? '+' : '-'}{currency} {Number(t.amount).toLocaleString()}
+                                </span>
+                                <button
+                                  onClick={() => handleDelete(t.id)}
+                                  className="btn-trash-min"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </section>

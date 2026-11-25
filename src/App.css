@@ -31,17 +31,19 @@
   border-radius: 1.5rem;
   box-shadow: var(--card-shadow);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 30;
 }
 
 .simple-nav::before {
   content: '';
   position: absolute;
-  top: -40px;
-  right: -40px;
-  width: 150px;
-  height: 150px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  top: 0;
+  right: 0;
+  width: 180px;
+  height: 120px;
+  background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.16) 0%, transparent 70%);
+  border-radius: 0 1.5rem 0 0;
   pointer-events: none;
 }
 
@@ -51,6 +53,35 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
+  flex-wrap: nowrap;
+}
+
+.nav-center-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.38rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.nav-center-pill .pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+}
+
+.nav-center-pill .pill-spend {
+  color: #f87171;
+  font-weight: 800;
 }
 
 .nav-brand {
@@ -117,20 +148,19 @@
 }
 
 .tab-btn.active {
-  background: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(168, 85, 247, 0.24));
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-  background: var(--panel-bg);
-  color: var(--text-main);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: flex-end;
+  gap: 0.45rem;
   flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 /* iPhone Connect Button in Nav */
@@ -1557,9 +1587,25 @@
   }
 
   .nav-tabs {
-    grid-template-columns: repeat(5, 1fr);
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     gap: 0.25rem;
     padding: 0.25rem;
+  }
+
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-tabs .tab-btn {
+    flex: 1 0 auto;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .nav-center-pill {
+    display: none;
   }
 
   .tab-btn {
@@ -6449,6 +6495,155 @@
 .mini-modal-card,
 .modal-card {
   box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* =========================================================
+   DAY-BY-DAY TRANSACTION HISTORY & WALLET CTA
+   ========================================================= */
+.day-groups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  margin-top: 0.5rem;
+}
+
+.day-group-block {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.15rem;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transition: border-color 0.2s ease;
+}
+
+.day-group-block:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.day-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-wrap: wrap;
+}
+
+.day-group-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.day-group-badge {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.day-group-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.day-summary-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.day-pill-expense {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.day-pill-income {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.wallet-history-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(18, 24, 38, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.wallet-history-cta:hover {
+  transform: translateY(-3px);
+  border-color: rgba(168, 85, 247, 0.45);
+  box-shadow: 0 16px 35px -10px rgba(168, 85, 247, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.wallet-history-cta-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.wallet-history-cta-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(168, 85, 247, 0.22));
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.wallet-history-cta-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.wallet-history-cta-sub {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.wallet-history-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.3));
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 
