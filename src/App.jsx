@@ -3226,93 +3226,177 @@ export default function App() {
 
         {/* ================= TAB 6: ADMIN CONTROL PANEL ================= */}
         {activeTab === 'admin' && isAdmin && (
-          <main className="tab-content admin-tab-content">
-            <div className="admin-header-card">
-              <div className="admin-header-main">
-                <div className="admin-badge-title">
-                  <span className="admin-shield-icon"><Shield size={24} /></span>
+          <main className="tab-content admin-tab-content modern-glass-theme">
+            {/* Top Glass Header Bar */}
+            <div className="glass-header-card">
+              <div className="glass-header-top">
+                <div className="glass-brand-block">
+                  <div className="glass-icon-glow">
+                    <Shield size={24} className="shield-glow-svg" />
+                  </div>
                   <div>
-                    <h3>{isSi ? 'UniCash පරිපාලන පාලක පැනලය (Admin Panel)' : 'UniCash Admin Control Center'}</h3>
-                    <p className="admin-subtext">
+                    <div className="glass-title-row">
+                      <h3 className="glass-title">
+                        {isSi ? 'පරිපාලන පාලක පුවරුව' : 'Admin Dashboard'}
+                      </h3>
+                      <span className="glass-ver-tag">V35 Elite</span>
+                    </div>
+                    <p className="glass-subtitle">
                       {isSi
-                        ? 'ලියාපදිංචි සියලු පරිශීලකයින්, ගිණුම් ශේෂයන් සහ මුරපද මෙතැනින් පාලනය කරන්න'
-                        : 'Manage registered users, review balances, reset passwords & maintain accounts'}
+                        ? 'පද්ධතියේ සාමාජිකයින්, මුදල් ශේෂයන් සහ ආරක්ෂාව මෙතැනින් කළමනාකරණය කරන්න'
+                        : 'Real-time overview of members, capital balances & security access'}
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn-refresh-admin"
-                  onClick={loadAdminUsers}
-                  disabled={adminLoading}
-                  title="Refresh users"
-                >
-                  <RefreshCw size={16} className={adminLoading ? 'spin-icon' : ''} />
-                  <span>{adminLoading ? (isSi ? 'පූරණය වේ...' : 'Loading...') : (isSi ? 'යාවත්කාලීන' : 'Refresh')}</span>
-                </button>
-              </div>
 
-              {/* Admin Stat Counters */}
-              <div className="admin-stats-grid">
-                <div className="admin-stat-card">
-                  <span className="admin-stat-label">{isSi ? 'මුළු සාමාජිකයින්' : 'Total Users'}</span>
-                  <span className="admin-stat-val">{adminUsers.length}</span>
-                </div>
-                <div className="admin-stat-card">
-                  <span className="admin-stat-label">{isSi ? 'ක්‍රියාකාරී ගිණුම්' : 'Active Accounts'}</span>
-                  <span className="admin-stat-val text-success">
-                    {adminUsers.filter(u => !u.isSuspended).length}
-                  </span>
-                </div>
-                <div className="admin-stat-card">
-                  <span className="admin-stat-label">{isSi ? 'අත්හිටුවූ ගිණුම්' : 'Suspended'}</span>
-                  <span className="admin-stat-val text-danger">
-                    {adminUsers.filter(u => u.isSuspended).length}
-                  </span>
-                </div>
-                <div className="admin-stat-card">
-                  <span className="admin-stat-label">{isSi ? 'මුළු ගනුදෙනු ප්‍රමාණය' : 'Total System Txs'}</span>
-                  <span className="admin-stat-val text-accent">
-                    {adminUsers.reduce((sum, u) => sum + (u.txCount || 0), 0)}
-                  </span>
-                </div>
-              </div>
-
-              {/* User Search Bar */}
-              <div className="admin-search-wrap">
-                <Search size={16} className="search-icon-inside" />
-                <input
-                  type="text"
-                  placeholder={isSi ? 'පරිශීලක නම හෝ Username එක සොයන්න...' : 'Search by name or @username...'}
-                  value={adminSearch}
-                  onChange={e => setAdminSearch(e.target.value)}
-                  className="admin-search-input"
-                />
-                {adminSearch && (
+                <div className="glass-header-actions">
                   <button
                     type="button"
-                    onClick={() => setAdminSearch('')}
-                    className="admin-search-clear"
+                    className="glass-btn-refresh"
+                    onClick={loadAdminUsers}
+                    disabled={adminLoading}
                   >
-                    ✕
+                    <RefreshCw size={15} className={adminLoading ? 'spin-icon' : ''} />
+                    <span>{adminLoading ? (isSi ? 'පූරණය...' : 'Syncing...') : (isSi ? 'සජීවීව බලන්න' : 'Live Sync')}</span>
                   </button>
-                )}
+                </div>
+              </div>
+
+              {/* 4 Stats Cards matching modern V35 Dashboard with Glow & Trend */}
+              <div className="glass-stats-grid">
+                {/* 1. Total Members */}
+                <div className="glass-stat-card card-glow-indigo">
+                  <div className="glass-stat-top">
+                    <span className="glass-stat-label">{isSi ? 'මුළු සාමාජිකයින්' : 'Total Members'}</span>
+                    <div className="glass-stat-icon-wrap icon-indigo">
+                      <Users size={18} />
+                    </div>
+                  </div>
+                  <div className="glass-stat-main">
+                    <h2 className="glass-stat-value">{adminUsers.length}</h2>
+                    <div className="glass-stat-trend trend-up">
+                      <ArrowUpRight size={15} />
+                      <span>{adminUsers.length > 0 ? '+100%' : '0%'}</span>
+                      <span className="trend-text">{isSi ? 'ලියාපදිංචි' : 'registered'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Active Accounts */}
+                <div className="glass-stat-card card-glow-emerald">
+                  <div className="glass-stat-top">
+                    <span className="glass-stat-label">{isSi ? 'ක්‍රියාකාරී ගිණුම්' : 'Active Accounts'}</span>
+                    <div className="glass-stat-icon-wrap icon-emerald">
+                      <UserCheck size={18} />
+                    </div>
+                  </div>
+                  <div className="glass-stat-main">
+                    <h2 className="glass-stat-value text-emerald">
+                      {adminUsers.filter(u => !u.isSuspended).length}
+                    </h2>
+                    <div className="glass-stat-trend trend-up text-emerald">
+                      <ArrowUpRight size={15} />
+                      <span>
+                        {adminUsers.length > 0
+                          ? Math.round((adminUsers.filter(u => !u.isSuspended).length / adminUsers.length) * 100)
+                          : 100}%
+                      </span>
+                      <span className="trend-text">{isSi ? 'සක්‍රිය අනුපාතය' : 'active rate'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Total System Capital / Turnover */}
+                <div className="glass-stat-card card-glow-violet">
+                  <div className="glass-stat-top">
+                    <span className="glass-stat-label">{isSi ? 'මුළු මුදල් සංචිතය' : 'System Capital'}</span>
+                    <div className="glass-stat-icon-wrap icon-violet">
+                      <Landmark size={18} />
+                    </div>
+                  </div>
+                  <div className="glass-stat-main">
+                    <h2 className="glass-stat-value">
+                      {currency} {adminUsers.reduce((sum, u) => sum + (u.totalBalance || 0), 0).toLocaleString()}
+                    </h2>
+                    <div className="glass-stat-trend trend-up text-violet">
+                      <ArrowUpRight size={15} />
+                      <span>Cash + Bank</span>
+                      <span className="trend-text">{isSi ? 'සමස්ත' : 'combined'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Total System Transactions */}
+                <div className="glass-stat-card card-glow-amber">
+                  <div className="glass-stat-top">
+                    <span className="glass-stat-label">{isSi ? 'මුළු ගනුදෙනු' : 'System Activity'}</span>
+                    <div className="glass-stat-icon-wrap icon-amber">
+                      <Receipt size={18} />
+                    </div>
+                  </div>
+                  <div className="glass-stat-main">
+                    <h2 className="glass-stat-value">
+                      {adminUsers.reduce((sum, u) => sum + (u.txCount || 0), 0)}
+                    </h2>
+                    <div className="glass-stat-trend trend-neutral">
+                      <Sparkles size={14} />
+                      <span>{adminUsers.reduce((sum, u) => sum + (u.loansCount || 0), 0)} {isSi ? 'ණය වාර්තා' : 'debts'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modern Search & Quick Filter Bar */}
+              <div className="glass-filter-bar">
+                <div className="glass-search-box">
+                  <Search size={16} className="glass-search-icon" />
+                  <input
+                    type="text"
+                    placeholder={isSi ? 'සාමාජික නම හෝ @username සෙවීම...' : 'Filter members by name or @username...'}
+                    value={adminSearch}
+                    onChange={e => setAdminSearch(e.target.value)}
+                    className="glass-search-input"
+                  />
+                  {adminSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminSearch('')}
+                      className="glass-search-clear"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <div className="glass-filter-badges">
+                  <span className="glass-pill-badge active">
+                    {isSi ? 'සියලු දෙනා' : 'All'} ({adminUsers.length})
+                  </span>
+                  <span className="glass-pill-badge">
+                    {isSi ? 'සක්‍රිය' : 'Active'} ({adminUsers.filter(u => !u.isSuspended).length})
+                  </span>
+                  {adminUsers.filter(u => u.isSuspended).length > 0 && (
+                    <span className="glass-pill-badge badge-danger">
+                      {isSi ? 'අත්හිටුවූ' : 'Suspended'} ({adminUsers.filter(u => u.isSuspended).length})
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Users List */}
+            {/* Users Glass Cards Grid */}
             <div className="admin-users-container">
               {adminLoading ? (
-                <div className="admin-loading-state">
-                  <RefreshCw size={24} className="spin-icon" />
-                  <p>{isSi ? 'පරිශීලක දත්ත ලබා ගනිමින්...' : 'Fetching user accounts...'}</p>
+                <div className="glass-empty-panel">
+                  <RefreshCw size={28} className="spin-icon text-indigo" />
+                  <p>{isSi ? 'පරිශීලක තොරතුරු සජීවීව පූරණය වෙමින් පවතී...' : 'Loading member database in real-time...'}</p>
                 </div>
               ) : adminUsers.length === 0 ? (
-                <div className="empty-state">
-                  <p>{isSi ? 'කිසිදු පරිශීලකයෙක් හමු නොවීය' : 'No users found in database'}</p>
+                <div className="glass-empty-panel">
+                  <Users size={32} className="text-dim" />
+                  <p>{isSi ? 'කිසිදු සාමාජිකයෙකු සොයාගත නොහැකි විය' : 'No users found in database'}</p>
                 </div>
               ) : (
-                <div className="admin-users-grid">
+                <div className="glass-users-grid">
                   {adminUsers
                     .filter(u => {
                       if (!adminSearch.trim()) return true;
@@ -3330,74 +3414,78 @@ export default function App() {
                       return (
                         <div
                           key={user.id}
-                          className={`admin-user-card ${user.isSuspended ? 'is-suspended' : ''}`}
+                          className={`glass-user-card ${user.isSuspended ? 'is-suspended' : ''}`}
                         >
-                          <div className="admin-user-card-head">
-                            <div className="admin-user-identity">
-                              <span className="admin-user-avatar">{user.avatar || '🎓'}</span>
-                              <div className="admin-user-info">
-                                <div className="admin-user-name-row">
-                                  <strong>{user.name || 'User'}</strong>
+                          {/* Card Top: Identity & Tags */}
+                          <div className="glass-user-card-head">
+                            <div className="glass-user-identity">
+                              <div className="glass-avatar-wrapper">
+                                <span className="glass-avatar-char">{user.avatar || '🎓'}</span>
+                                <span className={`glass-status-dot ${user.isSuspended ? 'status-suspended' : 'status-active'}`} />
+                              </div>
+                              <div className="glass-user-info">
+                                <div className="glass-user-name-row">
+                                  <strong className="glass-user-display-name">{user.name || 'Member'}</strong>
                                   {isOwnerAdmin && (
-                                    <span className="admin-pill-tag">👑 Admin / Owner</span>
+                                    <span className="glass-admin-tag">👑 Admin</span>
                                   )}
                                   {user.isSuspended && (
-                                    <span className="suspended-pill-tag">🚫 Suspended</span>
+                                    <span className="glass-suspended-tag">🚫 Suspended</span>
                                   )}
                                 </div>
-                                <span className="admin-user-handle">@{user.username}</span>
+                                <span className="glass-user-handle">@{user.username}</span>
                               </div>
                             </div>
-                            <span className="admin-user-date">
+                            <span className="glass-join-date">
                               {user.createdAt
                                 ? new Date(user.createdAt).toLocaleDateString()
                                 : 'Registered'}
                             </span>
                           </div>
 
-                          {/* Financial & Activity Summary per User */}
-                          <div className="admin-user-metrics">
-                            <div className="admin-metric-col">
-                              <span className="metric-label">{isSi ? 'මුදල් ශේෂය' : 'Cash'}</span>
-                              <span className={`metric-val ${(user.cashBalance || 0) < 0 ? 'text-danger' : ''}`}>
+                          {/* Financial Mini Stats with Glass Badges */}
+                          <div className="glass-metrics-strip">
+                            <div className="glass-metric-cell">
+                              <span className="g-metric-lbl">{isSi ? '💵 අතේ මුදල්' : '💵 Cash'}</span>
+                              <strong className={`g-metric-val ${(user.cashBalance || 0) < 0 ? 'text-danger' : ''}`}>
                                 {currency} {(user.cashBalance || 0).toLocaleString()}
-                              </span>
+                              </strong>
                             </div>
-                            <div className="admin-metric-col">
-                              <span className="metric-label">{isSi ? 'බැංකු ශේෂය' : 'Bank'}</span>
-                              <span className={`metric-val ${(user.bankBalance || 0) < 0 ? 'text-danger' : ''}`}>
+                            <div className="glass-metric-cell">
+                              <span className="g-metric-lbl">{isSi ? '🏦 බැංකුව' : '🏦 Bank'}</span>
+                              <strong className={`g-metric-val ${(user.bankBalance || 0) < 0 ? 'text-danger' : ''}`}>
                                 {currency} {(user.bankBalance || 0).toLocaleString()}
-                              </span>
+                              </strong>
                             </div>
-                            <div className="admin-metric-col">
-                              <span className="metric-label">{isSi ? 'ගනුදෙනු' : 'Txs'}</span>
-                              <span className="metric-val">{user.txCount || 0}</span>
+                            <div className="glass-metric-cell">
+                              <span className="g-metric-lbl">{isSi ? '📊 ගනුදෙනු' : '📊 Txs'}</span>
+                              <strong className="g-metric-val">{user.txCount || 0}</strong>
                             </div>
-                            <div className="admin-metric-col">
-                              <span className="metric-label">{isSi ? 'ණය වාර්තා' : 'Debts'}</span>
-                              <span className="metric-val">{user.loansCount || 0}</span>
+                            <div className="glass-metric-cell">
+                              <span className="g-metric-lbl">{isSi ? '🤝 ණය' : '🤝 Debts'}</span>
+                              <strong className="g-metric-val">{user.loansCount || 0}</strong>
                             </div>
                           </div>
 
-                          {/* Admin Action Buttons */}
-                          <div className="admin-user-actions">
+                          {/* Quick Admin Actions Row */}
+                          <div className="glass-card-actions">
                             <button
                               type="button"
-                              className="admin-action-btn btn-reset-pw"
+                              className="glass-action-btn btn-glass-pw"
                               onClick={() => {
                                 setAdminResetModalUser(user);
                                 setAdminNewPassword('');
                               }}
                               title="Reset Password"
                             >
-                              <KeyRound size={14} />
-                              <span>{isSi ? 'Password මාරු' : 'Reset PW'}</span>
+                              <KeyRound size={13} />
+                              <span>{isSi ? 'Password' : 'Password'}</span>
                             </button>
 
                             {!isOwnerAdmin && (
                               <button
                                 type="button"
-                                className={`admin-action-btn ${user.isSuspended ? 'btn-activate' : 'btn-suspend'}`}
+                                className={`glass-action-btn ${user.isSuspended ? 'btn-glass-activate' : 'btn-glass-suspend'}`}
                                 onClick={async () => {
                                   const nextState = !user.isSuspended;
                                   const confirmMsg = nextState
@@ -3418,15 +3506,15 @@ export default function App() {
                                   }
                                 }}
                               >
-                                {user.isSuspended ? <UserCheck size={14} /> : <Ban size={14} />}
-                                <span>{user.isSuspended ? (isSi ? 'ක්‍රියාත්මක' : 'Activate') : (isSi ? 'අත්හිටුවන්න' : 'Suspend')}</span>
+                                {user.isSuspended ? <UserCheck size={13} /> : <Ban size={13} />}
+                                <span>{user.isSuspended ? (isSi ? 'Active' : 'Active') : (isSi ? 'Suspend' : 'Suspend')}</span>
                               </button>
                             )}
 
                             {!isOwnerAdmin && (
                               <button
                                 type="button"
-                                className="admin-action-btn btn-delete-user"
+                                className="glass-action-btn btn-glass-delete"
                                 onClick={async () => {
                                   if (confirm(`⚠️ PERMANENT DELETE WARNING: This will permanently delete user @${user.username} and all their transactions from Firebase. Proceed?`)) {
                                     const ok = await deleteUserAdminApi(user.id);
@@ -3440,8 +3528,8 @@ export default function App() {
                                 }}
                                 title="Delete User Account"
                               >
-                                <Trash2 size={14} />
-                                <span>{isSi ? 'මකන්න' : 'Delete'}</span>
+                                <Trash2 size={13} />
+                                <span>{isSi ? 'Delete' : 'Delete'}</span>
                               </button>
                             )}
                           </div>
